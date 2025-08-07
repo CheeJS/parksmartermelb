@@ -67,7 +67,32 @@ app.get('/test-db', async (req, res) => {
 });
 
 // API routes will be added here
-// app.use('/api/parking', require('./routes/parking'));
+// Test database connection endpoint
+app.get('/api/parking', async (req, res) => {
+  try {
+    // Get a connection from the pool
+    const connection = await pool.getConnection();
+    
+    // Query the available_parking table
+    const [rows] = await connection.query('SELECT * FROM available_parking');
+    
+    // Release the connection back to the pool
+    connection.release();
+    
+    res.json({
+      status: 'success',
+      message: 'Database query successful',
+      data: rows
+    });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      error: error.message
+    });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Backend server is running on port ${PORT}`);

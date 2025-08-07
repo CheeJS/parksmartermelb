@@ -79,7 +79,7 @@ const HomePage = () => {
 useEffect(() => {
   const mapContainer = document.getElementById('map');
 
-  // ✅ Check if the map is already initialized
+  // Check if the map is already initialized
   if (mapContainer && !(mapContainer as any)._leaflet_id) {
     const L = (window as any).L;
 
@@ -107,6 +107,52 @@ useEffect(() => {
         }
       );
     }
+
+    // Put this somewhere else...
+    interface Parking {
+      RoadSegmentDescription:String,
+      available_parks:number,
+      Location:String,
+      Restriction_Days:String,
+      Restriction_Start:String,
+      Restriction_End:String,
+      Restriction_Display:String,
+      Latitude:number,
+      Longitude:number
+    }
+
+
+    fetch('http://localhost:5000/api/parking')
+    .then((res) => res.json())
+    .then((data) => {
+      data.data.forEach((obj:Parking)=>{
+        // Add a circle
+        const circle = L.circle([obj.Latitude,obj.Longitude], {
+          color: 'blue',           // Circle stroke color
+          fillColor: '#30f',       // Fill color
+          fillOpacity: 0.3,        // Fill opacity
+          radius: 5            // Radius in meters
+        }).addTo(map);
+
+        // Add click event to show number in a popup
+        circle.on('click', () => {
+          L.popup()
+            .setLatLng([obj.Latitude,obj.Longitude])
+            .setContent(
+              `<div>
+                <strong>RoadSegmentDescription:</strong> ${obj.RoadSegmentDescription}<br>
+                <strong>Available Parks:</strong> ${obj.available_parks}<br>
+                <strong>Restriction Days:</strong> ${obj.Restriction_Days}<br>
+                <strong>Restriction Start:</strong> ${obj.Restriction_Start}<br>
+                <strong>Restriction End:</strong> ${obj.Restriction_End}<br>
+                <strong>Restriction Display:</strong> ${obj.Restriction_Display}
+              </div>`
+            )
+            .openOn(map);
+        });
+      })
+    })
+    .catch((err) => console.error(err));
   }
 }, []);
 
