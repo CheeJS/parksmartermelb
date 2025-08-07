@@ -1,0 +1,17 @@
+{
+  "name": "parksmarter-melbourne-fullstack",
+  "version": "1.0.0",
+  "description": "Full-stack application for ParkSmarter Melbourne - parking management system",
+  "scripts": {
+    "install:backend": "cd backend && npm install --no-workspaces",
+    "install:frontend": "cd frontend && npm install --no-workspaces",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "start:backend": "cd backend && npm run dev",
+    "start:frontend": "cd frontend && npm start",
+    "build:frontend": "cd frontend && npm run build",
+    "start:prod": "cd backend && npm start"
+  },
+  "keywords": ["parking", "melbourne", "fullstack", "react", "express"],
+  "author": "",
+  "license": "ISC"
+}
