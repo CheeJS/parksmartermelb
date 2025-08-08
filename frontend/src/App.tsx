@@ -2,7 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import HomePage from './pages/HomePage';
-import RealTimeParking from './pages/RealTimeParking';
+
 import HistoricalTrends from './pages/HistoricalTrends';
 import EnvironmentalImpact from './pages/EnvironmentalImpact';
 import AboutUs from './pages/AboutUs';
@@ -77,7 +77,7 @@ function App() {
             </Logo>
             <NavLinks>
               <NavLink to="/">Home</NavLink>
-              <NavLink to="/parking">Parking Availability</NavLink>
+
               <NavLink to="/trends">Historical Trends</NavLink>
               <NavLink to="/impact">Environmental Impact</NavLink>
               <NavLink to="/about">About Us</NavLink>
@@ -87,7 +87,7 @@ function App() {
         <MainContent>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/parking" element={<RealTimeParking />} />
+
             <Route path="/trends" element={<HistoricalTrends />} />
             <Route path="/impact" element={<EnvironmentalImpact />} />
             <Route path="/about" element={<AboutUs />} />
