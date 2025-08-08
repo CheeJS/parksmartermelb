@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import { calculateRoute } from '../services/routesService';
 
   type TravelMode = 'DRIVE' | 'BICYCLE' | 'WALK' | 'TWO_WHEELER' | 'TRANSIT';
 
@@ -129,8 +130,12 @@ const CalculateButton = styled.button`
   transition: background 0.2s ease;
   width: 100%;
   margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: #2A4365;
   }
 
@@ -138,6 +143,29 @@ const CalculateButton = styled.button`
     background: #A0AEC0;
     cursor: not-allowed;
   }
+`;
+
+const LoadingSpinner = styled.div`
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 1s linear infinite;
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`;
+
+const ErrorMessage = styled.div`
+  background: #FED7D7;
+  color: #C53030;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  border: 1px solid #FEB2B2;
 `;
 
 const ResultsContainer = styled.div`
@@ -328,7 +356,10 @@ const EnvironmentalImpact = () => {
   const [startAutocomplete, setStartAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [endAutocomplete, setEndAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [isCalculated, setIsCalculated] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
   const [distance, setDistance] = useState<string>('');
+  const [duration, setDuration] = useState<string>('');
+  const [routeError, setRouteError] = useState<string>('');
 
   // Travel mode options with descriptions
   const travelModes = [
@@ -406,16 +437,67 @@ const EnvironmentalImpact = () => {
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          
+          // Try to get a readable address using reverse geocoding
+          let address = 'Current Location';
+          
+          try {
+            if (window.google && window.google.maps) {
+              const geocoder = new window.google.maps.Geocoder();
+              const response = await new Promise<google.maps.GeocoderResponse>((resolve, reject) => {
+                geocoder.geocode(
+                  { location: { lat, lng } },
+                  (results, status) => {
+                    if (status === 'OK') {
+                      resolve({ results: results || [] } as google.maps.GeocoderResponse);
+                    } else {
+                      reject(new Error(`Geocoding failed: ${status}`));
+                    }
+                  }
+                );
+              });
+              
+              if (response.results && response.results.length > 0) {
+                address = response.results[0].formatted_address || 'Current Location';
+              }
+            }
+          } catch (error) {
+            console.warn('Could not get address for current location:', error);
+            // Fall back to showing coordinates
+            address = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+          }
+          
           setStartLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-            address: 'Current Location'
+            lat,
+            lng,
+            address
           });
         },
         (error) => {
           console.error('Error getting current location:', error);
-          alert('Error getting your current location. Please try entering it manually.');
+          let errorMessage = 'Error getting your current location. Please try entering it manually.';
+          
+          switch (error.code) {
+            case error.PERMISSION_DENIED:
+              errorMessage = 'Location access denied. Please enable location services and try again.';
+              break;
+            case error.POSITION_UNAVAILABLE:
+              errorMessage = 'Location information unavailable. Please try entering your location manually.';
+              break;
+            case error.TIMEOUT:
+              errorMessage = 'Location request timed out. Please try again.';
+              break;
+          }
+          
+          alert(errorMessage);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
         }
       );
     } else {
@@ -423,16 +505,35 @@ const EnvironmentalImpact = () => {
     }
   };
 
-  const calculateEmissions = () => {
+  const calculateEmissions = async () => {
     if (!startLocation || !endLocation) {
       alert('Please enter both starting point and destination');
       return;
     }
 
-    // Mock calculation - in real app, this would use Google Maps Distance Matrix API
-    const mockDistance = Math.random() * 50 + 5; // Random distance between 5-55 km
-    setDistance(mockDistance.toFixed(1));
-    setIsCalculated(true);
+    setIsCalculating(true);
+    setRouteError('');
+    
+    try {
+      const result = await calculateRoute(
+        startLocation,
+        endLocation,
+        'DRIVE' // Default to driving for distance calculation
+      );
+
+      if (result.success && result.distance && result.duration) {
+        setDistance(result.distance.kilometers);
+        setDuration(result.duration.text);
+        setIsCalculated(true);
+      } else {
+        setRouteError(result.error || 'Failed to calculate route');
+      }
+    } catch (error) {
+      console.error('Error calculating route:', error);
+      setRouteError('Network error occurred while calculating route');
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   const getEmissionData = (mode: TravelMode) => {
@@ -543,7 +644,7 @@ const EnvironmentalImpact = () => {
 
       <MainContent>
         <ContentArea>
-          <LocationSearchContainer>
+      <LocationSearchContainer>
         <CardTitle>Route Details</CardTitle>
         <FlexRow>
           <InputWrapper>
@@ -575,10 +676,23 @@ const EnvironmentalImpact = () => {
         
         <CalculateButton 
           onClick={calculateEmissions}
-          disabled={!startLocation || !endLocation}
+          disabled={!startLocation || !endLocation || isCalculating}
         >
-          Calculate Carbon Emissions
+          {isCalculating ? (
+            <>
+              <LoadingSpinner />
+              Calculating Route...
+            </>
+          ) : (
+            'Calculate Carbon Emissions'
+          )}
         </CalculateButton>
+        
+        {routeError && (
+          <ErrorMessage>
+            ⚠️ {routeError}
+          </ErrorMessage>
+        )}
       </LocationSearchContainer>
 
       <ResultsContainer>
@@ -590,8 +704,16 @@ const EnvironmentalImpact = () => {
               <DistanceText>
                 📍 {startLocation?.address} → 🎯 {endLocation?.address}
               </DistanceText>
-              <div style={{ marginTop: '0.5rem', color: '#4A5568' }}>
-                Distance: {distance} km
+              <div style={{ 
+                marginTop: '0.75rem', 
+                display: 'flex', 
+                justifyContent: 'center', 
+                gap: '2rem',
+                color: '#4A5568',
+                fontSize: '0.95rem'
+              }}>
+                <div><strong>Distance:</strong> {distance} km</div>
+                <div><strong>Duration:</strong> {duration}</div>
               </div>
             </RouteInfo>
 
@@ -719,7 +841,7 @@ const EnvironmentalImpact = () => {
                 fontSize: '0.9rem'
               }}>
                 Calculate your route to see recommended parking spots near your destination
-              </div>
+          </div>
               
               {getParkingRecommendations().slice(0, 3).map((spot) => (
                 <ParkingSpotCard key={spot.id} style={{ opacity: 0.5 }}>
