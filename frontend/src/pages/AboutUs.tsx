@@ -74,7 +74,7 @@ const Logo = styled.img`
 `;
 
 const ContentSection = styled.section`
-  padding: 5rem 0;
+  padding: 1rem 0;
   background: white;
 `;
 
@@ -188,7 +188,7 @@ const FeatureText = styled.p`
 
 const ContactSection = styled.section`
   background: white;
-  padding: 5rem 0;
+  padding: 0.1rem 0;
 `;
 
 const ContactForm = styled.form`
