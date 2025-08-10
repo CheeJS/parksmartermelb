@@ -1,6 +1,6 @@
 # ParkSmarter Melbourne
 
-A modern web application by Crusty Peak team that helps Melbourne commuters find real-time parking, understand car ownership trends, and make eco-friendly travel decisions.
+A modern web application by Krusty Peak team that helps Melbourne commuters find real-time parking, understand car ownership trends, and make eco-friendly travel decisions.
 
 ## 🌟 Features
 

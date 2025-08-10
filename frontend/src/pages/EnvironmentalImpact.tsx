@@ -1,7 +1,9 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { calculateRoute } from '../services/routesService';
+import { calculateCO2Emissions, getEmissionColor, getEmissionRating, formatEmissions } from '../utils/emissionCalculator';
+import { findParkingNearDestination, formatDistance, formatWalkTime, ParkingRecommendation } from '../services/publicTransportService';
 
   type TravelMode = 'DRIVE' | 'BICYCLE' | 'WALK' | 'TWO_WHEELER' | 'TRANSIT';
 
@@ -13,41 +15,143 @@ interface Location {
   address: string;
 }
 
-interface ParkingSpot {
-  id: string;
-  name: string;
-  type: 'Street Parking' | 'Shopping Center' | 'Transit Hub' | 'EV Charging' | 'Bike Parking';
-  available: boolean;
-  availableSpots?: number;
-  totalSpots?: number;
-  price: string;
-  walkToTransit: string;
-  nearbyTransit: string[];
-  isEcoFriendly: boolean;
-  distance: string;
-}
+
 
 
 
 const PageContainer = styled.div`
+  min-height: 100vh;
+  background: linear-gradient(180deg, #F0FDF4 0%, #FFFFFF 100%);
+`;
+
+const HeroSection = styled.div`
+  background: linear-gradient(135deg, #2C5282 0%, #2D3748 100%);
+  color: white;
+  padding: 4rem 2rem 3rem;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+`;
+
+const HeroContent = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+`;
+
+const PageTitle = styled.h1`
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  @media (max-width: 768px) {
+    font-size: 2rem;
+  }
+`;
+
+const Description = styled.p`
+  font-size: 1.25rem;
+  line-height: 1.6;
+  opacity: 0.95;
+  max-width: 800px;
+  margin-bottom: 2rem;
+
+  @media (max-width: 768px) {
+  font-size: 1.1rem;
+  }
+`;
+
+const StatsRow = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+  margin-top: 3rem;
+`;
+
+const StatCard = styled.div`
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  text-align: center;
+`;
+
+const StatNumber = styled.div`
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #48BB78;
+`;
+
+const StatLabel = styled.div`
+  font-size: 0.9rem;
+  opacity: 0.9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const ContentWrapper = styled.div`
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
 `;
 
-const Header = styled.div`
-  margin-bottom: 2rem;
+const InfoSection = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  margin: 3rem 0;
 `;
 
-const PageTitle = styled.h1`
-  color: #2C5282;
+const InfoCard = styled.div`
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  border: 1px solid #E2E8F0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.1);
+  }
+`;
+
+const InfoIcon = styled.div`
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #48BB78 0%, #38A169 100%);
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+`;
+
+const InfoTitle = styled.h3`
+  color: #2D3748;
+  font-size: 1.25rem;
+  font-weight: 600;
   margin-bottom: 1rem;
 `;
 
-const Description = styled.p`
+const InfoText = styled.p`
   color: #4A5568;
-  font-size: 1.1rem;
-  line-height: 1.5;
+  line-height: 1.6;
+  font-size: 0.95rem;
 `;
 
 const CardTitle = styled.h3`
@@ -57,7 +161,87 @@ const CardTitle = styled.h3`
 `;
 
 const LocationSearchContainer = styled.div`
+  background: white;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  border: 1px solid #E2E8F0;
   margin-bottom: 2rem;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #48BB78 0%, #38A169 100%);
+    border-radius: 1rem 0 0 1rem;
+  }
+`;
+
+const SectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+`;
+
+const SectionIcon = styled.div`
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #EBF8FF 0%, #BEE3F8 100%);
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+`;
+
+const SectionTitle = styled.h2`
+  color: #2D3748;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+`;
+
+const TipsSection = styled.div`
+  background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%);
+  border-radius: 1rem;
+  padding: 2rem;
+  margin: 3rem 0;
+  border: 1px solid #BBF7D0;
+`;
+
+const TipsList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0 0;
+`;
+
+const TipItem = styled.li`
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  color: #2D3748;
+  line-height: 1.6;
+
+  &::before {
+    content: '✓';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: #48BB78;
+    color: white;
+    border-radius: 50%;
+    font-weight: bold;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
 `;
 
 const FlexRow = styled.div`
@@ -172,8 +356,21 @@ const ResultsContainer = styled.div`
   background: white;
   border-radius: 1rem;
   padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  border: 1px solid #E2E8F0;
   margin-top: 2rem;
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(180deg, #2C5282 0%, #2A4365 100%);
+    border-radius: 1rem 0 0 1rem;
+  }
 `;
 
 const ResultsGrid = styled.div`
@@ -209,11 +406,29 @@ const ResultTitle = styled.h3`
   font-weight: 600;
 `;
 
-const ResultEmission = styled.div<{ isZero: boolean }>`
+const ResultEmission = styled.div<{ color: string }>`
   font-size: 1.8rem;
   font-weight: 700;
-  color: ${props => props.isZero ? '#48BB78' : '#E53E3E'};
+  color: ${props => props.color};
   margin-bottom: 0.5rem;
+`;
+
+const EmissionDetails = styled.div`
+  font-size: 0.75rem;
+  color: #4A5568;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+`;
+
+const ComparisonBadge = styled.span<{ isPositive: boolean }>`
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  background: ${props => props.isPositive ? '#C6F6D5' : '#FED7D7'};
+  color: ${props => props.isPositive ? '#2F855A' : '#C53030'};
 `;
 
 const ResultDescription = styled.p`
@@ -344,6 +559,30 @@ const GreenBadge = styled.span`
   gap: 0.25rem;
 `;
 
+const YellowBadge = styled.span`
+  background: #FED7AA;
+  color: #C05621;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
+const RedBadge = styled.span`
+  background: #FEB2B2;
+  color: #C53030;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+`;
+
 const ParkingPrice = styled.div`
   font-weight: 600;
   color: #2D3748;
@@ -360,6 +599,8 @@ const EnvironmentalImpact = () => {
   const [distance, setDistance] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
   const [routeError, setRouteError] = useState<string>('');
+  const [parkingRecommendations, setParkingRecommendations] = useState<ParkingRecommendation[]>([]);
+  const [isLoadingParking, setIsLoadingParking] = useState(false);
 
   // Travel mode options with descriptions
   const travelModes = [
@@ -400,6 +641,32 @@ const EnvironmentalImpact = () => {
     libraries: ['places']
   });
 
+  // Fetch parking recommendations when destination changes
+  useEffect(() => {
+    const fetchParkingRecommendations = async () => {
+      if (!endLocation) {
+        setParkingRecommendations([]);
+        return;
+      }
+
+      setIsLoadingParking(true);
+      try {
+        const recommendations = await findParkingNearDestination(
+          endLocation.lat,
+          endLocation.lng
+        );
+        setParkingRecommendations(recommendations);
+      } catch (error) {
+        console.error('Error fetching parking recommendations:', error);
+        setParkingRecommendations([]);
+      } finally {
+        setIsLoadingParking(false);
+      }
+    };
+
+    fetchParkingRecommendations();
+  }, [endLocation]);
+
   const onStartLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
     setStartAutocomplete(autocomplete);
   }, []);
@@ -415,7 +682,7 @@ const EnvironmentalImpact = () => {
         setStartLocation({
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
-          address: place.formatted_address || ''
+          address: place.formatted_address || place.name || ''
         });
       }
     }
@@ -428,7 +695,7 @@ const EnvironmentalImpact = () => {
         setEndLocation({
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
-          address: place.formatted_address || ''
+          address: place.formatted_address || place.name || ''
         });
       }
     }
@@ -537,96 +804,26 @@ const EnvironmentalImpact = () => {
   };
 
   const getEmissionData = (mode: TravelMode) => {
-    if (!distance) return '0';
+    if (!distance) return { value: '0', color: '#48BB78', rating: 'Not calculated' };
     const distanceKm = parseFloat(distance);
     
-    // Carbon emission factors (kg CO2 per km)
-    const emissionFactors = {
-      DRIVE: 0.21, // Average car
-      TWO_WHEELER: 0.13, // Motorcycle
-      TRANSIT: 0.06, // Public transport
-      BICYCLE: 0, // Zero emissions
-      WALK: 0 // Zero emissions
+    // Use the new accurate emission calculator
+    const result = calculateCO2Emissions(distanceKm, mode);
+    
+    return {
+      value: formatEmissions(result.totalEmissions),
+      rawValue: result.totalEmissions,
+      color: getEmissionColor(result.totalEmissions),
+      rating: getEmissionRating(result.totalEmissions),
+      perKm: result.emissionsPerKm,
+      fuelConsumed: result.fuelConsumed,
+      vehicleType: result.vehicleType,
+      methodology: result.methodology,
+      comparison: result.comparison
     };
-
-    return (distanceKm * emissionFactors[mode]).toFixed(2);
   };
 
-  // Mock parking data - prioritizes eco-friendly spots near public transport
-  const getParkingRecommendations = (): ParkingSpot[] => {
-    return [
-      {
-        id: '1',
-        name: 'Flinders Street Station Parking',
-        type: 'Transit Hub' as const,
-        available: true,
-        availableSpots: 23,
-        totalSpots: 150,
-        price: '$4/hour',
-        walkToTransit: '1 min',
-        nearbyTransit: ['Tram', 'Train', 'Bus'],
-        isEcoFriendly: true,
-        distance: '0.8km'
-      },
-      {
-        id: '2',
-        name: 'Southern Cross EV Charging',
-        type: 'EV Charging' as const,
-        available: true,
-        availableSpots: 5,
-        totalSpots: 12,
-        price: '$6/hour + charging',
-        walkToTransit: '2 min',
-        nearbyTransit: ['Train', 'Bus'],
-        isEcoFriendly: true,
-        distance: '1.2km'
-      },
-      {
-        id: '3',
-        name: 'Collins Street Bike Parking',
-        type: 'Bike Parking' as const,
-        available: true,
-        availableSpots: 15,
-        totalSpots: 20,
-        price: 'Free',
-        walkToTransit: '1 min',
-        nearbyTransit: ['Tram'],
-        isEcoFriendly: true,
-        distance: '0.5km'
-      },
-      {
-        id: '4',
-        name: 'Parliament Station P&R',
-        type: 'Transit Hub' as const,
-        available: true,
-        availableSpots: 8,
-        totalSpots: 80,
-        price: '$3.50/hour',
-        walkToTransit: '0 min',
-        nearbyTransit: ['Train', 'Tram'],
-        isEcoFriendly: true,
-        distance: '1.5km'
-      },
-      {
-        id: '5',
-        name: 'QV Shopping Center',
-        type: 'Shopping Center' as const,
-        available: false,
-        availableSpots: 0,
-        totalSpots: 200,
-        price: '$5/hour',
-        walkToTransit: '8 min',
-        nearbyTransit: ['Tram'],
-        isEcoFriendly: false,
-        distance: '2.1km'
-      }
-    ].sort((a, b) => {
-      // Sort by eco-friendly first, then by availability, then by walk time
-      if (a.isEcoFriendly !== b.isEcoFriendly) return b.isEcoFriendly ? 1 : -1;
-      if (a.available !== b.available) return b.available ? 1 : -1;
-      return parseInt(a.walkToTransit) - parseInt(b.walkToTransit);
-    });
-  };
+
 
 
 
@@ -635,22 +832,61 @@ const EnvironmentalImpact = () => {
 
   return (
     <PageContainer>
-      <Header>
-        <PageTitle>Environmental Impact</PageTitle>
+      <HeroSection>
+        <HeroContent>
+          <PageTitle>🌍 Environmental Impact Calculator</PageTitle>
         <Description>
-          Compare different transport options and their environmental impact to make sustainable choices
+            Make informed decisions about your travel. Calculate carbon emissions, 
+            compare transport options, and discover eco-friendly parking near public transit.
         </Description>
-      </Header>
+          
 
-      <MainContent>
+        </HeroContent>
+      </HeroSection>
+
+      <ContentWrapper>
+        <InfoSection>
+          <InfoCard>
+            <InfoIcon>🅿️</InfoIcon>
+            <InfoTitle>Real-Time Parking Data</InfoTitle>
+            <InfoText>
+              Live parking availability from Melbourne's street parking network. See exactly how many 
+              spots are available and when parking restrictions apply.
+            </InfoText>
+          </InfoCard>
+          
+          <InfoCard>
+            <InfoIcon>🚌</InfoIcon>
+            <InfoTitle>Transit Integration</InfoTitle>
+            <InfoText>
+              Find parking within 250m of train, tram, and bus stops. Our system shows which specific 
+              transport services are nearby to help you plan multimodal journeys.
+            </InfoText>
+          </InfoCard>
+          
+          <InfoCard>
+            <InfoIcon>🌱</InfoIcon>
+            <InfoTitle>Eco-Friendly Choices</InfoTitle>
+            <InfoText>
+              Parking spots are automatically labeled as eco-friendly when within 250m of public 
+              transport, encouraging sustainable travel choices for your final destination.
+            </InfoText>
+          </InfoCard>
+        </InfoSection>
+
+        <MainContent>
         <ContentArea>
       <LocationSearchContainer>
-        <CardTitle>Route Details</CardTitle>
+        <SectionHeader>
+          <SectionIcon>📍</SectionIcon>
+          <SectionTitle>Plan Your Journey</SectionTitle>
+        </SectionHeader>
         <FlexRow>
           <InputWrapper>
             <Autocomplete
               onLoad={onStartLoad}
               onPlaceChanged={onStartPlaceChanged}
+              key={`start-${startLocation?.address || 'empty'}`}
             >
               <SearchInput
                 type="text"
@@ -666,6 +902,7 @@ const EnvironmentalImpact = () => {
         <Autocomplete
           onLoad={onEndLoad}
           onPlaceChanged={onEndPlaceChanged}
+          key={`end-${endLocation?.address || 'empty'}`}
         >
           <SearchInput
             type="text"
@@ -696,7 +933,10 @@ const EnvironmentalImpact = () => {
       </LocationSearchContainer>
 
       <ResultsContainer>
-        <CardTitle>Carbon Emission Results</CardTitle>
+        <SectionHeader>
+          <SectionIcon>📊</SectionIcon>
+          <SectionTitle>Emission Analysis</SectionTitle>
+        </SectionHeader>
         
         {isCalculated ? (
           <>
@@ -720,16 +960,45 @@ const EnvironmentalImpact = () => {
             <ResultsGrid>
               {travelModes.map((mode) => {
                 const emission = getEmissionData(mode.mode);
-                const isZero = parseFloat(emission) === 0;
                 
                 return (
                   <ResultCard key={mode.mode}>
                     <ResultIcon>{mode.icon}</ResultIcon>
                     <ResultTitle>{mode.title}</ResultTitle>
-                    <ResultEmission isZero={isZero}>
-                      {isZero ? '0' : emission} kg CO₂
+                    <ResultEmission color={emission.color}>
+                      {emission.value} CO₂
                     </ResultEmission>
-                    <ResultDescription>{mode.description}</ResultDescription>
+                    <div style={{ fontSize: '0.85rem', color: emission.color, fontWeight: '600' }}>
+                      {emission.rating}
+                    </div>
+                    {emission.rawValue && emission.rawValue > 0 && (
+                      <EmissionDetails>
+                        <div>📊 {emission.perKm?.toFixed(3)} kg CO₂/km</div>
+                        {mode.mode === 'TRANSIT' ? (
+                          <div>👥 Per passenger basis</div>
+                        ) : (
+                          <div>⛽ {emission.fuelConsumed?.toFixed(1)}L fuel</div>
+                        )}
+                        {emission.comparison && emission.comparison.vsAverage < 0 && (
+                          <ComparisonBadge isPositive={true}>
+                            {Math.abs(emission.comparison.vsAverage).toFixed(0)}% less than car
+                          </ComparisonBadge>
+                        )}
+                        {emission.comparison && emission.comparison.vsAverage > 0 && (
+                          <ComparisonBadge isPositive={false}>
+                            {emission.comparison.vsAverage.toFixed(0)}% more than car
+                          </ComparisonBadge>
+                        )}
+                        {emission.comparison && emission.comparison.vsAverage === 0 && (
+                          <ComparisonBadge isPositive={false}>
+                            Average car emissions
+                          </ComparisonBadge>
+                        )}
+                      </EmissionDetails>
+                    )}
+                    <ResultDescription style={{ marginTop: '0.75rem' }}>
+                      {mode.description}
+                    </ResultDescription>
                   </ResultCard>
                 );
               })}
@@ -751,10 +1020,15 @@ const EnvironmentalImpact = () => {
                 <ResultCard key={mode.mode} style={{ opacity: 0.6 }}>
                   <ResultIcon>{mode.icon}</ResultIcon>
                   <ResultTitle>{mode.title}</ResultTitle>
-                  <ResultEmission isZero={false}>
+                  <ResultEmission color="#A0AEC0">
                     -- kg CO₂
                   </ResultEmission>
-                  <ResultDescription>{mode.description}</ResultDescription>
+                  <div style={{ fontSize: '0.85rem', color: '#A0AEC0', fontWeight: '600' }}>
+                    Awaiting calculation
+                  </div>
+                  <ResultDescription style={{ marginTop: '0.75rem' }}>
+                    {mode.description}
+                  </ResultDescription>
                 </ResultCard>
               ))}
             </ResultsGrid>
@@ -764,58 +1038,91 @@ const EnvironmentalImpact = () => {
         </ContentArea>
 
         <Sidebar>
-          <SidebarTitle>
-            🅿️ Recommended Parking
-          </SidebarTitle>
-          <div style={{ 
+          <SectionHeader style={{ padding: '0', marginBottom: '1rem' }}>
+            <SectionIcon>🅿️</SectionIcon>
+            <div>
+              <SectionTitle style={{ fontSize: '1.2rem' }}>Smart Parking</SectionTitle>
+              <div style={{ fontSize: '0.8rem', color: '#4A5568', marginTop: '0.25rem' }}>
+                Near Public Transit
+              </div>
+            </div>
+          </SectionHeader>
+                    <div style={{ 
             fontSize: '0.85rem', 
             color: '#4A5568', 
             marginBottom: '1rem',
             lineHeight: '1.4'
           }}>
-            Park near public transport for a greener journey
+            Park within 250m of public transport for eco-friendly choices
           </div>
           
-          {isCalculated ? (
+          {isLoadingParking ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '2rem',
+              color: '#4A5568'
+            }}>
+              <LoadingSpinner />
+              Finding parking near destination...
+            </div>
+          ) : parkingRecommendations.length > 0 ? (
             <>
-              {getParkingRecommendations().slice(0, 4).map((spot) => (
+              {parkingRecommendations.slice(0, 3).map((spot) => (
                 <ParkingSpotCard key={spot.id}>
                   <ParkingHeader>
                     <ParkingName>{spot.name}</ParkingName>
-                    <AvailabilityBadge available={spot.available}>
-                      {spot.available ? 'Available' : 'Full'}
+                    <AvailabilityBadge available={(spot.availableSpots || 0) > 0}>
+                      {(spot.availableSpots || 0) > 0 ? 'Available' : 'Not Available'}
                     </AvailabilityBadge>
                   </ParkingHeader>
                   
                   <ParkingInfo>
                     <InfoRow>
                       <span>📍</span>
-                      <span>{spot.distance} away</span>
+                      <span>{formatDistance(spot.distanceFromDestination)} from destination</span>
                     </InfoRow>
                     
                     <InfoRow>
                       <span>🚶</span>
-                      <span>{spot.walkToTransit} walk to transit</span>
+                      <span>{formatWalkTime(spot.walkToNearestTransit)} to transit</span>
                     </InfoRow>
                     
                     <InfoRow>
                       <span>🚌</span>
-                      <span>{spot.nearbyTransit.join(', ')}</span>
+                      <span>
+                        {spot.nearbyStops.length > 0 
+                          ? spot.nearbyStops.map(s => s.transport_type).filter((type, index, arr) => arr.indexOf(type) === index).join(', ')
+                          : 'No nearby transit'}
+                      </span>
                     </InfoRow>
                     
-                    {spot.availableSpots && spot.totalSpots && (
+                    <InfoRow>
+                      <span>🅿️</span>
+                      <span>{spot.availableSpots || 0} spots available</span>
+                    </InfoRow>
+                    
+                    {spot.restrictionDays && spot.restrictionStart && spot.restrictionEnd && (
                       <InfoRow>
-                        <span>🅿️</span>
-                        <span>{spot.availableSpots}/{spot.totalSpots} spots</span>
+                        <span>🕐</span>
+                        <span>{spot.restrictionDays} {spot.restrictionStart.slice(0,5)}-{spot.restrictionEnd.slice(0,5)}</span>
                       </InfoRow>
                     )}
+                
                     
                     <InfoRow>
                       <ParkingPrice>{spot.price}</ParkingPrice>
-                      {spot.isEcoFriendly && (
+                      {spot.walkToNearestTransit <= 250 ? (
                         <GreenBadge>
-                          🌱 Eco Choice
+                          🌱 Eco-Friendly
                         </GreenBadge>
+                      ) : spot.walkToNearestTransit <= 500 ? (
+                        <YellowBadge>
+                          ⚠️ Moderate Walk
+                        </YellowBadge>
+                      ) : (
+                        <RedBadge>
+                          🚶 Long Walk
+                        </RedBadge>
                       )}
                     </InfoRow>
                   </ParkingInfo>
@@ -829,60 +1136,75 @@ const EnvironmentalImpact = () => {
                 marginTop: '1rem',
                 fontStyle: 'italic'
               }}>
-                Updated 2 minutes ago
+                {parkingRecommendations.filter(p => p.walkToNearestTransit <= 250).length} eco-friendly spots within 250m of transit
               </div>
             </>
+          ) : endLocation ? (
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '1.5rem 0',
+              color: '#4A5568',
+              fontSize: '0.9rem'
+            }}>
+              No parking data available for this destination
+            </div>
           ) : (
-            <>
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '1.5rem 0',
-                color: '#4A5568',
-                fontSize: '0.9rem'
-              }}>
-                Calculate your route to see recommended parking spots near your destination
+            <div style={{ 
+              textAlign: 'center', 
+              padding: '1.5rem 0',
+              color: '#4A5568',
+              fontSize: '0.9rem'
+            }}>
+              Enter a destination to see parking recommendations
           </div>
-              
-              {getParkingRecommendations().slice(0, 3).map((spot) => (
-                <ParkingSpotCard key={spot.id} style={{ opacity: 0.5 }}>
-                  <ParkingHeader>
-                    <ParkingName>{spot.name}</ParkingName>
-                    <AvailabilityBadge available={true}>
-                      --
-                    </AvailabilityBadge>
-                  </ParkingHeader>
-                  
-                  <ParkingInfo>
-                    <InfoRow>
-                      <span>📍</span>
-                      <span>-- away</span>
-                    </InfoRow>
-                    
-                    <InfoRow>
-                      <span>🚶</span>
-                      <span>-- walk to transit</span>
-                    </InfoRow>
-                    
-                    <InfoRow>
-                      <span>🚌</span>
-                      <span>Transit options</span>
-                    </InfoRow>
-                    
-                    <InfoRow>
-                      <ParkingPrice>--</ParkingPrice>
-                      {spot.isEcoFriendly && (
-                        <GreenBadge>
-                          🌱 Eco Choice
-                        </GreenBadge>
-                      )}
-                    </InfoRow>
-                  </ParkingInfo>
-                </ParkingSpotCard>
-              ))}
-            </>
           )}
         </Sidebar>
       </MainContent>
+
+      <TipsSection>
+        <SectionHeader>
+          <SectionIcon>💡</SectionIcon>
+          <SectionTitle>Smart Parking Tips</SectionTitle>
+        </SectionHeader>
+        
+        <TipsList>
+          <TipItem>
+            <strong>Look for Green Labels:</strong> Choose parking spots marked as "Eco-Friendly" - they're within 250m of public transport.
+          </TipItem>
+          <TipItem>
+            <strong>Check Transit Options:</strong> Our system shows which trains, trams, and buses are near each parking spot to help plan your journey.
+          </TipItem>
+          <TipItem>
+            <strong>Real-Time Availability:</strong> Use live parking data to see exactly how many spots are available before you arrive.
+          </TipItem>
+          <TipItem>
+            <strong>Time Restrictions:</strong> Check parking time limits and restriction hours to avoid fines and plan your stay accordingly.
+          </TipItem>
+          <TipItem>
+            <strong>Multimodal Journey:</strong> Park once and use Melbourne's extensive tram, train, and bus network for the rest of your journey.
+          </TipItem>
+        </TipsList>
+      </TipsSection>
+
+      <InfoSection style={{ marginTop: '3rem' }}>
+        <InfoCard>
+          <InfoIcon>📈</InfoIcon>
+          <InfoTitle>Your Impact Matters</InfoTitle>
+          <InfoText>
+            If every Melbourne commuter reduced their emissions by just 10%, we could save 
+            over 500,000 tonnes of CO₂ annually - equivalent to planting 2 million trees.
+          </InfoText>
+        </InfoCard>
+                
+        <InfoCard>
+          <InfoIcon>🔄</InfoIcon>
+          <InfoTitle>Real-Time Updates</InfoTitle>
+          <InfoText>
+            Our system updates every 10 minutes with the latest parking data to give you the most accurate information.
+          </InfoText>
+        </InfoCard>
+      </InfoSection>
+      </ContentWrapper>
     </PageContainer>
   );
 };
