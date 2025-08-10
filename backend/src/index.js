@@ -94,6 +94,32 @@ app.get('/api/parking', async (req, res) => {
   }
 });
 
+app.get('/api/live', async (req, res) => {
+  try {
+    // Get a connection from the pool
+    const connection = await pool.getConnection();
+    
+    // Query the available_parking table
+    const [rows] = await connection.query('SELECT * FROM bay_sensors_test');
+    
+    // Release the connection back to the pool
+    connection.release();
+    
+    res.json({
+      status: 'success',
+      message: 'Database query successful',
+      data: rows
+    });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      error: error.message
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Backend server is running on port ${PORT}`);
 });

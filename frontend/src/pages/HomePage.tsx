@@ -186,6 +186,16 @@ const HomePage = () => {
       Longitude:number
     }
 
+    interface LiveParking {
+      Status_Timestamp:string,
+      Status_Description:string,
+      Latitude:number,
+      Longitude:number
+    }
+
+    // Two layer groups
+    let overviewLayer = L.layerGroup().addTo(map); // for bay center points
+    let detailLayer = L.layerGroup();              // for individual spots
 
     fetch('http://localhost:5000/api/parking')
     .then((res) => res.json())
@@ -196,8 +206,8 @@ const HomePage = () => {
           color: 'blue',           // Circle stroke color
           fillColor: '#30f',       // Fill color
           fillOpacity: 0.3,        // Fill opacity
-          radius: 5            // Radius in meters
-        }).addTo(map);
+          radius: 15            // Radius in meters
+        }).addTo(overviewLayer);
 
         // Add click event to show number in a popup
         circle.on('click', () => {
@@ -218,6 +228,42 @@ const HomePage = () => {
       })
     })
     .catch((err) => console.error(err));
+
+    fetch('http://localhost:5000/api/live')
+    .then((res) => res.json())
+    .then((data) => {
+      data.data.forEach((parking:LiveParking)=>{
+        const point = L.circle([parking.Latitude,parking.Longitude], {
+          radius: 1,
+          // should do data preprocessing beforehand...
+          color: parking.Status_Description === "Present"? "green" : "red",
+          fillOpacity: 0.8
+
+        }).addTo(detailLayer);
+        point.on('click', () => {
+          L.popup()
+            .setLatLng([parking.Latitude,parking.Longitude])
+            .setContent(
+              `<div>
+                <strong>Last updated:</strong> ${parking.Status_Timestamp}<br>
+              </div>`
+            )
+            .openOn(map);
+        });
+      })
+    })
+    .catch((err) => console.error(err));
+
+    // Show/hide based on zoom
+    map.on('zoomend', () => {
+      if (map.getZoom() >= 18) {
+        if (map.hasLayer(overviewLayer)) map.removeLayer(overviewLayer);
+        if (!map.hasLayer(detailLayer)) map.addLayer(detailLayer);
+      } else {
+        if (map.hasLayer(detailLayer)) map.removeLayer(detailLayer);
+        if (!map.hasLayer(overviewLayer)) map.addLayer(overviewLayer);
+      }
+    });
   }
 }, []);
 
