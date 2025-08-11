@@ -971,41 +971,109 @@ const HomePage = () => {
       (mapContainer as any).detailLayer = detailLayer;
       (mapContainer as any).currentMode = 'overview';
 
-      // Add mode control
-    let ModeControl = L.Control.extend({
-    options: { position: 'topright' },
-    onAdd: function(map:any) {
-      let container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-      container.innerHTML = 'Overview';
+      // Add mode control with better styling
+      let ModeControl = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd: function(map:any) {
+          let container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom mode-toggle-button');
+          container.innerHTML = `
+            <div style="
+              background: linear-gradient(135deg, #2C5282 0%, #48BB78 100%);
+              color: white;
+              padding: 8px 16px;
+              border-radius: 6px;
+              font-weight: 600;
+              font-size: 14px;
+              cursor: pointer;
+              user-select: none;
+              text-align: center;
+              min-width: 100px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              transition: all 0.2s ease;
+            " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)'">
+              🔄 Overview Mode
+            </div>
+          `;
 
-      // Prevent click from affecting the map
-      L.DomEvent.disableClickPropagation(container);
-      L.DomEvent.disableScrollPropagation(container);
+          // Prevent click from affecting the map
+          L.DomEvent.disableClickPropagation(container);
+          L.DomEvent.disableScrollPropagation(container);
 
-      container.onclick = function() {
-            const mapContainer = document.getElementById('map');
-            const currentMode = (mapContainer as any).currentMode;
-            const overviewLayer = (mapContainer as any).overviewLayer;
-            const detailLayer = (mapContainer as any).detailLayer;
+          container.onclick = function() {
+                const mapContainer = document.getElementById('map');
+                const currentMode = (mapContainer as any).currentMode;
+                const overviewLayer = (mapContainer as any).overviewLayer;
+                const detailLayer = (mapContainer as any).detailLayer;
+                const buttonContent = container.querySelector('div');
 
-        if (currentMode === 'overview') {
-          map.removeLayer(overviewLayer);
-          map.addLayer(detailLayer);
-              (mapContainer as any).currentMode = 'detail';
-          container.innerHTML = 'Detail';
-        } else {
-          map.removeLayer(detailLayer);
-          map.addLayer(overviewLayer);
-              (mapContainer as any).currentMode = 'overview';
-          container.innerHTML = 'Overview';
+            if (currentMode === 'overview') {
+              map.removeLayer(overviewLayer);
+              map.addLayer(detailLayer);
+                  (mapContainer as any).currentMode = 'detail';
+              if (buttonContent) {
+                buttonContent.innerHTML = '🔍 Sensor Detail Mode';
+                buttonContent.style.background = 'linear-gradient(135deg, #48BB78 0%, #2C5282 100%)';
+              }
+            } else {
+              map.removeLayer(detailLayer);
+              map.addLayer(overviewLayer);
+                  (mapContainer as any).currentMode = 'overview';
+              if (buttonContent) {
+                buttonContent.innerHTML = '🔄 Overview Mode';
+                buttonContent.style.background = 'linear-gradient(135deg, #2C5282 0%, #48BB78 100%)';
+              }
+            }
+          };
+
+          return container;
         }
-      };
-
-      return container;
-    }
-  });
+      });
       
-  map.addControl(new ModeControl());
+      // Add legend control
+      let LegendControl = L.Control.extend({
+        options: { position: 'bottomleft' },
+        onAdd: function(map:any) {
+          let container = L.DomUtil.create('div', 'leaflet-control leaflet-control-legend');
+          container.innerHTML = `
+            <div style="
+              background: white;
+              padding: 12px;
+              border-radius: 8px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              border: 1px solid #E2E8F0;
+              font-size: 12px;
+              line-height: 1.4;
+              max-width: 250px;
+            ">
+              <h4 style="margin: 0 0 8px 0; color: #2C5282; font-size: 14px; font-weight: 600;">Map Legend</h4>
+              <div style="display: flex; align-items: center; margin: 4px 0;">
+                <div style="width: 16px; height: 16px; background: #30f; border-radius: 50%; margin-right: 8px; opacity: 0.7;"></div>
+                <span style="color: #4A5568;">Parking Areas (Click for details & occupancy chart)</span>
+              </div>
+              <div style="display: flex; align-items: center; margin: 4px 0;">
+                <div style="width: 8px; height: 8px; background: green; border-radius: 50%; margin-right: 12px;"></div>
+                <span style="color: #4A5568;">Occupied Sensor</span>
+              </div>
+              <div style="display: flex; align-items: center; margin: 4px 0;">
+                <div style="width: 8px; height: 8px; background: red; border-radius: 50%; margin-right: 12px;"></div>
+                <span style="color: #4A5568;">Available Sensor</span>
+              </div>
+              <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E2E8F0; color: #718096; font-size: 11px;">
+                💡 Use the mode toggle button to switch between overview and sensor detail views
+              </div>
+            </div>
+          `;
+
+          // Prevent click from affecting the map
+          L.DomEvent.disableClickPropagation(container);
+          L.DomEvent.disableScrollPropagation(container);
+
+          return container;
+        }
+      });
+      
+      map.addControl(new ModeControl());
+      map.addControl(new LegendControl());
 
   // Load initial map data on first render
   loadMapData();
@@ -1142,11 +1210,26 @@ const HomePage = () => {
       </SearchSection>
 
       <ContentSection>
-        <Container>
-          <MapContainer>
-            <MapWrapper>
-              <div id="map" style={{ height: '700px', width: '100%', borderRadius: '1rem' }}></div>
-            </MapWrapper>
+                 <Container>
+           <MapContainer>
+             <MapWrapper>
+               <div style={{ 
+                 background: 'linear-gradient(135deg, #F0FFF4 0%, #E6FFFA 100%)', 
+                 padding: '12px 16px', 
+                 borderRadius: '8px 8px 0 0', 
+                 borderBottom: '1px solid #E2E8F0',
+                 fontSize: '14px',
+                 color: '#2F855A',
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 gap: '8px'
+               }}>
+                 <span>🗺️</span>
+                 <span><strong>Interactive Map:</strong> Click blue circles for parking details • Use toggle button to view individual sensors • Legend in bottom-left corner</span>
+               </div>
+               <div id="map" style={{ height: '700px', width: '100%', borderRadius: '0 0 1rem 1rem' }}></div>
+             </MapWrapper>
             <MapSidebar>
               <SidebarTitle>
                 🏆 Highest Availability

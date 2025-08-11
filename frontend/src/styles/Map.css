@@ -1,8 +1,39 @@
 .leaflet-control-custom {
     background-color: white;
-    cursor : 'pointer';
-    padding : 10px;
+    cursor: pointer;
+    padding: 10px;
     user-select: none;
     -webkit-user-select: none;
     -ms-user-select: none;
+}
+
+.mode-toggle-button {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.mode-toggle-button:hover {
+    background: transparent !important;
+}
+
+.leaflet-control-legend {
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Improve popup styling */
+.leaflet-popup-content-wrapper {
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15) !important;
+}
+
+.leaflet-popup-content {
+    margin: 16px !important;
+    line-height: 1.5 !important;
+}
+
+.leaflet-popup-tip {
+    background: white !important;
 }
