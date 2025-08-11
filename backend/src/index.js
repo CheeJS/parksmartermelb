@@ -485,7 +485,9 @@ app.post('/api/simple-parking-search', async (req, res) => {
         restrictionDays: spot.Restriction_Days,
         restrictionStart: spot.Restriction_Start,
         restrictionEnd: spot.Restriction_End,
-        price: spot.Restriction_Display
+        price: spot.Restriction_Display,
+        longitude: spot.Longitude,
+        latitude: spot.Latitude
       };
     });
 

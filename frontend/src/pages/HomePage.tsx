@@ -516,6 +516,8 @@ interface SimpleParkingSpot {
   restrictionStart?: string;
   restrictionEnd?: string;
   price?: string;
+  latitude: string;
+  longitude: string
 }
 
 interface TopParkingSpot {
@@ -662,6 +664,9 @@ const HomePage = () => {
 
     // Initialize map
     const map = L.map('map').setView(defaultLatLng, 13);
+
+    // Store DOM
+    (mapContainer as any).leafletMap = map;
 
     L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
@@ -847,12 +852,16 @@ const HomePage = () => {
                 {isSearching ? 'Searching...' : 'Find Parking'}
               </SearchButton>
             </SearchForm>
-
             {hasSearched && (
               <ParkingResults>
                 {parkingResults.length > 0 ? (
                   parkingResults.slice(0, 5).map((spot) => (
-                    <ParkingCard key={spot.id}>
+                    <ParkingCard key={spot.id} onClick={()=>{
+                        const mapContainer = document.getElementById('map');
+                        window.scrollTo({top:1600, behavior:'smooth'})
+                        const map = (mapContainer as any).leafletMap;
+                        map.setView([spot.latitude,spot.longitude], 17)
+                    }}>
                       <ParkingHeader>
                         <ParkingName>{spot.name}</ParkingName>
                         <AvailabilityBadge available={spot.availableSpots > 0}>
