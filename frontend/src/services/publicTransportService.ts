@@ -70,7 +70,7 @@ export async function fetchNearbyTransportStops(
   try {
     // Use the backend API endpoint
 
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://api.parksmartermelb.me';
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
     const response = await fetch(`${apiUrl}/api/transport-stops`, {
       method: 'POST',
       headers: {
