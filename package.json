@@ -11,7 +11,16 @@
     "build:frontend": "cd frontend && npm run build",
     "start:prod": "cd backend && npm start"
   },
-  "keywords": ["parking", "melbourne", "fullstack", "react", "express"],
+  "keywords": [
+    "parking",
+    "melbourne",
+    "fullstack",
+    "react",
+    "express"
+  ],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "chart.js": "^4.5.0"
+  }
 }

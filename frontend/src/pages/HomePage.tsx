@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import { Chart } from 'chart.js';
 import '../styles/Map.css';
 
 const MapControls = styled.div`
@@ -528,6 +529,31 @@ interface TopParkingSpot {
   price?: string;
 }
 
+    // Put this somewhere else...
+    interface Parking {
+      RoadSegmentDescription:string,
+      available_parks:number,
+      Location:string,
+      Restriction_Days:string,
+      Restriction_Start:string,
+      Restriction_End:string,
+      Restriction_Display:string,
+      Latitude:number,
+      Longitude:number
+    }
+
+    interface LiveParking {
+      Status_Timestamp:string,
+      Status_Description:string,
+      Latitude:number,
+      Longitude:number
+    }
+
+    interface Occupancy {
+      RoadSegmentDescription: string,
+      [time: string]: number | string; 
+    }
+
 const HomePage = () => {
   const [showEcoSpots, setShowEcoSpots] = useState(false);
   const [showAccessible, setShowAccessible] = useState(false);
@@ -687,61 +713,178 @@ const HomePage = () => {
       );
     }
 
-    // Put this somewhere else...
-    interface Parking {
-      RoadSegmentDescription:String,
-      available_parks:number,
-      Location:String,
-      Restriction_Days:String,
-      Restriction_Start:String,
-      Restriction_End:String,
-      Restriction_Display:String,
-      Latitude:number,
-      Longitude:number
-    }
 
-    interface LiveParking {
-      Status_Timestamp:string,
-      Status_Description:string,
-      Latitude:number,
-      Longitude:number
-    }
+    Promise.all([
+      fetch('http://localhost:5000/api/parking').then(res => res.json()),
+      fetch('http://localhost:5000/api/occupancy').then(res => res.json())
+    ])
+    .then(([parkingData, occupancyData]) => {
+      const parkingArray: Parking[] = parkingData.data;
+      const occupancyArray: Occupancy[] = occupancyData.data;
+
+      // Create a lookup map for occupancy by a common key, e.g., RoadSegmentDescription
+      const occupancyMap = new Map<string, Occupancy>();
+      occupancyArray.forEach(o => occupancyMap.set(o.RoadSegmentDescription, o));
+
+      parkingArray.forEach((p, index) => {
+        // Find occupancy data for this parking segment
+        const occupancy = occupancyMap.get(p.RoadSegmentDescription);
+
+        // Create circle on map
+        const circle = L.circle([p.Latitude, p.Longitude], {
+          color: 'blue',
+          fillColor: '#30f',
+          fillOpacity: 0.3,
+          radius: 15,
+        }).addTo(overviewLayer);
+
+        // Create popup content by combining parking + occupancy info
+        const canvasId = `popupChart-${index}`;
+
+        const occupancyChartHTML = occupancy
+          ? `<canvas id="${canvasId}" width="500" height="250" style="display: block; margin: 0 auto;"></canvas>`
+          : '<div>No occupancy data available</div>';
+
+        const popupContent = `
+          ${occupancy? `<div style="width: 500px; height: 350px;">` : `<div style="width: 250px; height: 100px;">`}
+            <h4>${p.RoadSegmentDescription}</h4>
+            <div><strong>Available Parks:</strong> ${p.available_parks}</div>
+            <div><strong>Restriction:</strong> ${p.Restriction_Days} ${p.Restriction_Start} - ${p.Restriction_End}</div>
+            ${occupancyChartHTML}
+          </div>
+        `;
+
+        circle.bindPopup(popupContent, {maxWidth: 500, minWidth: 200});
+
+        // Draw chart if occupancy data exists
+        circle.on('popupopen', () => {
+          if (!occupancy) return; // no occupancy, skip chart
+
+          const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
+          if (!canvas) return;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+
+          // Example: create a line chart using occupancy data — replace labels and data as needed
+          const labels = Object.keys(occupancy).filter(k => k !== 'RoadSegmentDescription');
+          const dataPoints = labels.map(label => Number((occupancy[label] as string).replace('%', '')) / 100);
+
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: 'Occupancy',
+                data: dataPoints,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.3)',
+              }]
+            },
+            options: {
+              responsive: false,
+              animation: false,
+              scales: {
+                x: {
+                  ticks: {
+                    minRotation: 90,  // no rotation to keep labels horizontal
+                    maxRotation: 90,  // no rotation to keep labels horizontal
+                    autoSkip: true,  // skip some labels if crowded
+                    maxTicksLimit: 12 // limit number of x labels shown
+                  }
+                },
+                y: {
+                  beginAtZero: true
+                }
+              },
+              plugins: {
+                legend: { display: false }
+              }
+            }
+          });
+        });
+      });
+    })
+    .catch(err => console.error(err));
 
     // Two layer groups
     let overviewLayer = L.layerGroup().addTo(map); // for bay center points
     let detailLayer = L.layerGroup();              // for individual spots
 
-    fetch('http://localhost:5000/api/parking')
-    .then((res) => res.json())
-    .then((data) => {
-      data.data.forEach((obj:Parking)=>{
-        // Add a circle
-        const circle = L.circle([obj.Latitude,obj.Longitude], {
-          color: 'blue',           // Circle stroke color
-          fillColor: '#30f',       // Fill color
-          fillOpacity: 0.3,        // Fill opacity
-          radius: 15            // Radius in meters
-        }).addTo(overviewLayer);
+    // fetch('http://localhost:5000/api/parking')
+    // .then((res) => res.json())
+    // .then((data) => {
+    //   data.data.forEach((obj:Parking, index:number)=>{
+    //     // Add a circle
+    //     const circle = L.circle([obj.Latitude,obj.Longitude], {
+    //       color: 'blue',           // Circle stroke color
+    //       fillColor: '#30f',       // Fill color
+    //       fillOpacity: 0.3,        // Fill opacity
+    //       radius: 15            // Radius in meters
+    //     }).addTo(overviewLayer);
 
-        // Add click event to show number in a popup
-        circle.on('click', () => {
-          L.popup()
-            .setLatLng([obj.Latitude,obj.Longitude])
-            .setContent(
-              `<div>
-                <strong>RoadSegmentDescription:</strong> ${obj.RoadSegmentDescription}<br>
-                <strong>Available Parks:</strong> ${obj.available_parks}<br>
-                <strong>Restriction Days:</strong> ${obj.Restriction_Days}<br>
-                <strong>Restriction Start:</strong> ${obj.Restriction_Start}<br>
-                <strong>Restriction End:</strong> ${obj.Restriction_End}<br>
-                <strong>Restriction Display:</strong> ${obj.Restriction_Display}
-              </div>`
-            )
-            .openOn(map);
-        });
-      })
-    })
-    .catch((err) => console.error(err));
+    //     // Add click event to show number in a popup
+    //     circle.on('click', () => {
+    //       L.popup()
+    //         .setLatLng([obj.Latitude,obj.Longitude])
+    //         .setContent(
+    //           `<div>
+    //             <strong>RoadSegmentDescription:</strong> ${obj.RoadSegmentDescription}<br>
+    //             <strong>Available Parks:</strong> ${obj.available_parks}<br>
+    //             <strong>Restriction Days:</strong> ${obj.Restriction_Days}<br>
+    //             <strong>Restriction Start:</strong> ${obj.Restriction_Start}<br>
+    //             <strong>Restriction End:</strong> ${obj.Restriction_End}<br>
+    //             <strong>Restriction Display:</strong> ${obj.Restriction_Display}
+    //           </div>`
+    //         )
+    //         .openOn(map);
+    //     });
+
+    //   })
+    // })
+    // .catch((err) => console.error(err));
+
+    // fetch('http://localhost:5000/api/occupancy')
+    // .then((res) => res.json())
+    // .then((data) => {
+    //   data.data.forEach((obj:Occupancy, index:number)=>{
+
+    //     const canvasId = `popupChart-${index}`;
+    //     const popupContent = `
+    //       <div style="width: 220px; height: 130px;">
+    //         <h4>Road Segment Description: ${obj.RoadSegmentDescription}</h4>
+    //         <canvas id="${canvasId}" width="200" height="100" style="display: block; margin: 0 auto;"></canvas>
+    //       </div>
+    //     `;
+
+    //     circle.bindPopup(popupContent, { maxWidth: 300, minWidth: 300 });
+    //     circle.on('popupopen', () => {
+    //       // Wait for popup to open so canvas is in DOM
+    //       const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
+    //       if (!canvas) return; // canvas not found, exit early
+    //       const ctx = canvas.getContext('2d');
+    //       if (!ctx) return; // context not available, exit early
+    //       new Chart(ctx, {
+    //         type: 'line',
+    //         data: {
+    //           labels: ['A', 'B', 'C', 'D'],
+    //           datasets: [{
+    //             label: 'Sample Data',
+    //             data: [12, 19, 3, 5],
+    //             backgroundColor: 'rgba(54, 162, 235, 0.7)',
+    //           }]
+    //         },
+    //         options: {
+    //           responsive: false,
+    //           animation: false,
+    //           scales: { x: { display: false }, y: { display: false } },
+    //           plugins: { legend: { display: false } },
+    //         }
+    //       });
+    //     });
+    //   })
+    // })
+    // .catch((err) => console.error(err));
 
     fetch('http://localhost:5000/api/live')
     .then((res) => res.json())
