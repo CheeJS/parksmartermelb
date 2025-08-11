@@ -35,13 +35,17 @@ ChartJS.register(
 );
 
 const PageContainer = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
+  width: 100%;
+  margin: 0;
+  padding: 2rem 1rem;
 `;
 
 const Header = styled.div`
   margin-bottom: 2rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 1rem;
 `;
 
 const PageTitle = styled.h1`
@@ -99,25 +103,131 @@ const ChartTitle = styled.h2`
 `;
 
 const InsightsContainer = styled.div`
-  background: #F7FAFC;
-  border-radius: 1rem;
-  padding: 2rem;
-  margin-bottom: 2rem;
+  margin-top: 3rem;
+  padding: 2.5rem;
+  background: linear-gradient(135deg, #f1f8ff 0%, #e3f2fd 100%);
+  border-radius: 16px;
+  border: 1px solid #bbdefb;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 `;
 
 const InsightsTitle = styled.h3`
-  color: #2C5282;
-  margin-bottom: 1rem;
-  font-size: 1.3rem;
+  color: #1565c0;
+  margin-bottom: 2rem;
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: center;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 3px;
+    background: linear-gradient(90deg, #1565c0, #42a5f5);
+    border-radius: 2px;
+  }
 `;
 
 const InsightsList = styled.ul`
-  color: #4A5568;
-  line-height: 1.6;
+  list-style: none;
+  padding: 0;
   
   li {
-    margin-bottom: 0.8rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border-left: 4px solid #42a5f5;
+    line-height: 1.7;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+    
+    strong {
+      color: #1565c0;
+      font-weight: 600;
+    }
+    
+    ul {
+      margin-top: 1rem;
+      padding-left: 1.5rem;
+      
+      li {
+        margin: 0.8rem 0;
+        padding: 0.5rem 0;
+        background: none;
+        box-shadow: none;
+        border-radius: 0;
+        border-left: none;
+        list-style: none;
+        position: relative;
+        transform: none;
+        
+        &:hover {
+          transform: none;
+          box-shadow: none;
+        }
+        
+        &::before {
+          content: '▸';
+          color: #42a5f5;
+          font-weight: bold;
+          position: absolute;
+          left: -1rem;
+        }
+      }
+    }
   }
+`;
+
+const SectionDivider = styled.div`
+  margin: 3rem 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
+`;
+
+const FullWidthChartsSection = styled.div`
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  padding: 2rem 1rem;
+  background: #f8fafc;
+`;
+
+const ChartsFlexContainer = styled.div`
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+  width: 100%;
+  max-width: none;
+  
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+`;
+
+const ChartWrapper = styled.div`
+  flex: 1;
+  min-width: 0; /* Prevents flex items from overflowing */
 `;
 
 const RecommendationsContainer = styled.div`
@@ -134,6 +244,9 @@ const DataTableContainer = styled.div`
   padding: 2rem;
   margin-bottom: 2rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 `;
 
 const DataTable = styled.table`
@@ -173,20 +286,36 @@ const DataSummary = styled.div`
 `;
 
 const SummaryCard = styled.div`
-  background: #EDF2F7;
-  padding: 1rem;
-  border-radius: 0.5rem;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  padding: 1.5rem;
+  border-radius: 12px;
   text-align: center;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  }
   
   .value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #2C5282;
+    font-size: 2rem;
+    font-weight: 800;
+    color: #1e40af;
+    background: linear-gradient(90deg, #1e40af, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.5rem;
   }
   
   .label {
-    font-size: 0.9rem;
-    color: #4A5568;
+    font-size: 0.875rem;
+    color: #64748b;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 `;
 
@@ -254,7 +383,7 @@ const HistoricalTrends = () => {
       setIsLoading(true);
       setError(null);
       
-      console.log('🔄 Fetching car ownership data from Azure database...');
+      console.log('🔄 Fetching car ownership data...');
       const data = await fetchCarOwnershipAnalysis();
       setAnalysisData(data);
       console.log('✅ Car ownership data loaded successfully');
@@ -334,32 +463,173 @@ const HistoricalTrends = () => {
 
   return (
     <PageContainer>
-      <Header>
-        <PageTitle>Historical Trends - Car Ownership Analysis</PageTitle>
-        <Description>
-          Analyze historical trends in car ownership rates for Melbourne using vehicle registration and population data from 2009-2021.
-          <br/><strong>Formula: (Number of Registered Vehicles ÷ Population) × 1,000</strong>
-        </Description>
-      </Header>
+        <Header>
+    <PageTitle>Historical Trends - Population Growth & Urban Congestion</PageTitle>
+    <Description>
+      Analyze population growth trends in Melbourne CBD from 2009-2021 and understand how increasing population 
+      impacts urban congestion, infrastructure demand, and transportation planning.
+    </Description>
+  </Header>
 
-      {/* Car Ownership Rate Calculation Results */}
-      <DataTableContainer>
-        <ChartTitle>Historical Car Ownership Rates (Per 1,000 Residents)</ChartTitle>
-        
-        {analysisData.ownershipRates && analysisData.ownershipRates.length > 0 ? (
-          <>
+      {/* Side-by-Side Charts Layout - Full Width */}
+      <FullWidthChartsSection>
+         <ChartsFlexContainer>
+         {/* Population Growth Chart - Left Side */}
+         {analysisData.populationData && analysisData.populationData.length > 0 && (
+           <ChartWrapper>
+             <ChartContainer>
+               <ChartTitle>Population Growth Trend Over Time</ChartTitle>
+               <Line 
+                 data={{
+                   labels: analysisData.populationData.map(data => data.year.toString()),
+                   datasets: [
+                     {
+                       label: 'Melbourne CBD Population',
+                       data: analysisData.populationData.map(data => data.population),
+                       borderColor: '#48BB78',
+                       backgroundColor: 'rgba(72, 187, 120, 0.1)',
+                       fill: true,
+                       tension: 0.4,
+                       pointRadius: 6,
+                       pointHoverRadius: 8,
+                       pointBackgroundColor: '#48BB78',
+                       pointBorderColor: '#ffffff',
+                       pointBorderWidth: 2,
+                     },
+                   ],
+                 }}
+                 options={{
+                   responsive: true,
+                   plugins: {
+                     legend: {
+                       position: 'top' as const,
+                     },
+                     tooltip: {
+                       callbacks: {
+                         label: (context) => {
+                           return `Population: ${Number(context.parsed.y).toLocaleString()} residents`;
+                         }
+                       }
+                     }
+                   },
+                   scales: {
+                     y: {
+                       beginAtZero: false,
+                       title: {
+                         display: true,
+                         text: 'Population'
+                       },
+                       ticks: {
+                         callback: function(value) {
+                           return Number(value).toLocaleString();
+                         }
+                       }
+                     },
+                     x: {
+                       title: {
+                         display: true,
+                         text: 'Year'
+                       }
+                     }
+                   },
+                 }}
+               />
+             </ChartContainer>
+           </ChartWrapper>
+         )}
+
+         {/* Car Ownership Rate Chart - Right Side */}
+         {analysisData.ownershipRates && analysisData.ownershipRates.length > 0 && (
+           <ChartWrapper>
+             <ChartContainer>
+               <ChartTitle>Car Ownership Rate Trends Over Time</ChartTitle>
+               <Line 
+                 data={{
+                   labels: analysisData.ownershipRates.map(rate => rate.year.toString()),
+                   datasets: [
+                     {
+                       label: 'Cars per 1,000 Residents',
+                       data: analysisData.ownershipRates.map(rate => rate.rate),
+                       borderColor: '#2C5282',
+                       backgroundColor: 'rgba(44, 82, 130, 0.1)',
+                       fill: true,
+                       tension: 0.4,
+                       pointRadius: 6,
+                       pointHoverRadius: 8,
+                       pointBackgroundColor: '#2C5282',
+                       pointBorderColor: '#ffffff',
+                       pointBorderWidth: 2,
+                     },
+                   ],
+                 }}
+                 options={{
+                   responsive: true,
+                   plugins: {
+                     legend: {
+                       position: 'top' as const,
+                     },
+                     tooltip: {
+                       callbacks: {
+                         label: (context) => {
+                           return `${context.dataset.label}: ${context.parsed.y} cars per 1,000 residents`;
+                         }
+                       }
+                     }
+                   },
+                   scales: {
+                     y: {
+                       beginAtZero: false,
+                       title: {
+                         display: true,
+                         text: 'Cars per 1,000 Residents'
+                       }
+                     },
+                     x: {
+                       title: {
+                         display: true,
+                         text: 'Year'
+                       }
+                     }
+                   },
+                 }}
+               />
+             </ChartContainer>
+           </ChartWrapper>
+         )}
+         </ChartsFlexContainer>
+       </FullWidthChartsSection>
+      {/* Population Growth Analysis */}
+      {analysisData.populationData && analysisData.populationData.length > 0 && (
+        <>
+          <DataTableContainer>
+            <ChartTitle>Melbourne CBD Population Growth (2009-2021)</ChartTitle>
+            
             <DataSummary>
               <SummaryCard>
-                <div className="value">{analysisData.ownershipRates.length}</div>
-                <div className="label">Years Calculated</div>
+                <div className="value">{analysisData.populationData.length}</div>
+                <div className="label">Years of Data</div>
               </SummaryCard>
               <SummaryCard>
-                <div className="value">{formatDisplayValue(analysisData.metrics.currentRate, 'rate')}</div>
-                <div className="label">Latest Rate (per 1,000)</div>
+                <div className="value">{formatDisplayValue(analysisData.populationData[0]?.population, 'population')}</div>
+                <div className="label">Starting Population ({analysisData.populationData[0]?.year})</div>
               </SummaryCard>
               <SummaryCard>
-                <div className="value">{analysisData.ownershipRates[analysisData.ownershipRates.length - 1]?.year || '--'}</div>
-                <div className="label">Latest Year</div>
+                <div className="value">{formatDisplayValue(analysisData.populationData[analysisData.populationData.length - 1]?.population, 'population')}</div>
+                <div className="label">Latest Population ({analysisData.populationData[analysisData.populationData.length - 1]?.year})</div>
+              </SummaryCard>
+              <SummaryCard>
+                <div className="value">
+                  {(() => {
+                    const first = analysisData.populationData[0]?.population;
+                    const last = analysisData.populationData[analysisData.populationData.length - 1]?.population;
+                    if (first && last) {
+                      const growth = ((last - first) / first * 100);
+                      return `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%`;
+                    }
+                    return '--';
+                  })()}
+                </div>
+                <div className="label">Total Growth</div>
               </SummaryCard>
             </DataSummary>
             
@@ -368,62 +638,77 @@ const HistoricalTrends = () => {
                 <tr>
                   <th>Year</th>
                   <th>Population</th>
-                  <th>Registered Vehicles</th>
-                  <th>Ownership Rate<br/>(per 1,000 residents)</th>
-                  <th>Calculation</th>
+                  <th>Year-over-Year Change</th>
+                  <th>Growth Rate (%)</th>
                 </tr>
               </thead>
               <tbody>
-                {analysisData.ownershipRates.map((row) => (
-                  <tr key={row.year}>
-                    <td><strong>{row.year}</strong></td>
-                    <td>{formatDisplayValue(row.population, 'population')}</td>
-                    <td>{formatDisplayValue(row.vehicles, 'vehicles')}</td>
-                    <td><strong>{formatDisplayValue(row.rate, 'rate')}</strong></td>
-                    <td>({formatDisplayValue(row.vehicles, 'vehicles')} ÷ {formatDisplayValue(row.population, 'population')}) × 1,000</td>
-                  </tr>
-                ))}
+                {analysisData.populationData.map((row, index) => {
+                  const prevRow = index > 0 ? analysisData.populationData[index - 1] : null;
+                  const change = prevRow ? row.population - prevRow.population : 0;
+                  const growthRate = prevRow ? ((change / prevRow.population) * 100) : 0;
+                  
+                  return (
+                    <tr key={row.year}>
+                      <td><strong>{row.year}</strong></td>
+                      <td>{formatDisplayValue(row.population, 'population')}</td>
+                      <td style={{ color: change >= 0 ? '#48BB78' : '#F56565' }}>
+                        {index === 0 ? '--' : `${change >= 0 ? '+' : ''}${change.toLocaleString()}`}
+                      </td>
+                      <td style={{ color: growthRate >= 0 ? '#48BB78' : '#F56565' }}>
+                        {index === 0 ? '--' : `${growthRate >= 0 ? '+' : ''}${growthRate.toFixed(1)}%`}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </DataTable>
-          </>
-        ) : (
-          <NoDataMessage>
-            <p><strong>No ownership rates calculated</strong></p>
-            <p>This could be due to:</p>
-            <ul style={{textAlign: 'left', display: 'inline-block'}}>
-              <li>No overlapping years between population and vehicle data</li>
-              <li>Data format issues in the database tables</li>
-              <li>Missing or invalid data values</li>
-            </ul>
-          </NoDataMessage>
-        )}
-      </DataTableContainer>
+          </DataTableContainer>        
+                 </>
+       )}
 
-      {/* Historical Trends Analysis */}
+       
+
+      
+
+      <SectionDivider />
+
+      {/* Population Growth & Congestion Analysis */}
       <InsightsContainer>
-        <InsightsTitle>Understanding Historical Trends</InsightsTitle>
+        <InsightsTitle>Population Growth Impact on Urban Congestion</InsightsTitle>
         <InsightsList>
           <li>
-            <strong>Historical Car Ownership Rate:</strong> This standardized metric (vehicles per 1,000 residents) allows for 
-            meaningful year-over-year comparisons, accounting for population changes over the 2009-2021 period.
+            <strong>Population Growth Pressure:</strong> As Melbourne CBD population increases, more residents require daily 
+            transportation, creating greater demand for roads, public transport, and parking infrastructure. Even modest 
+            population growth can significantly amplify peak-hour congestion.
           </li>
           <li>
-            <strong>Trend Analysis:</strong> By examining the historical progression, you can identify:
+            <strong>Infrastructure Strain:</strong> Population growth directly impacts:
             <ul style={{marginTop: '0.5rem'}}>
-              <li>Whether car ownership is increasing, decreasing, or stable over time</li>
-              <li>Years with significant changes in ownership patterns</li>
-              <li>Correlation with economic conditions, policy changes, or urban development</li>
-              <li>Patterns that may predict future transportation needs</li>
+              <li><strong>Road Networks:</strong> More residents = more trips, overwhelming existing road capacity</li>
+              <li><strong>Public Transport:</strong> Increased demand on trains, trams, and buses during peak periods</li>
+              <li><strong>Parking Demand:</strong> Growing competition for limited CBD parking spaces</li>
+              <li><strong>Pedestrian Flow:</strong> Crowded footpaths and crossings during busy periods</li>
             </ul>
           </li>
           <li>
-            <strong>Growth Indicators:</strong> An increasing trend suggests car ownership is growing faster than population growth, 
-            indicating potential increased pressure on parking and road infrastructure. A decreasing trend may suggest improved 
-            public transport adoption or urban density policies are working.
+            <strong>Congestion Multiplier Effect:</strong> Urban congestion doesn't scale linearly with population. A 20% 
+            population increase can result in 50%+ longer travel times due to network capacity constraints and bottleneck effects.
           </li>
           <li>
-            <strong>Planning Applications:</strong> Historical trends inform long-term urban planning decisions, including 
-            infrastructure investment priorities, public transport expansion, and sustainable transportation policies.
+            <strong>Additional Congestion Factors:</strong> Beyond population growth, other key factors influence congestion:
+            <ul style={{marginTop: '0.5rem'}}>
+              <li><strong>Economic Activity:</strong> Business growth, tourism, and events increase non-resident traffic</li>
+              <li><strong>Urban Development:</strong> New construction can temporarily disrupt traffic flow</li>
+              <li><strong>Transport Mode Choice:</strong> Preference for private vehicles vs. public transport</li>
+              <li><strong>Work Patterns:</strong> Remote work, flexible hours, and staggered schedules affect peak demand</li>
+              <li><strong>Weather & Seasonality:</strong> Events, school holidays, and weather impact travel patterns</li>
+            </ul>
+          </li>
+          <li>
+            <strong>Strategic Planning Implications:</strong> Understanding population growth trends enables proactive 
+            infrastructure planning, including transport capacity expansion, smart traffic management systems, and policies 
+            encouraging sustainable transport modes to mitigate congestion before it becomes critical.
           </li>
         </InsightsList>
       </InsightsContainer>
