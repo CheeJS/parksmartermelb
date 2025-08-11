@@ -527,32 +527,33 @@ interface TopParkingSpot {
   availableSpots: number;
   totalSpots: number;
   price?: string;
+  longitude: number,
+  latitude: number
 }
 
-    // Put this somewhere else...
-    interface Parking {
-      RoadSegmentDescription:string,
-      available_parks:number,
-      Location:string,
-      Restriction_Days:string,
-      Restriction_Start:string,
-      Restriction_End:string,
-      Restriction_Display:string,
-      Latitude:number,
-      Longitude:number
-    }
+interface Parking {
+  RoadSegmentDescription:string,
+  available_parks:number,
+  Location:string,
+  Restriction_Days:string,
+  Restriction_Start:string,
+  Restriction_End:string,
+  Restriction_Display:string,
+  Latitude:number,
+  Longitude:number
+}
 
-    interface LiveParking {
-      Status_Timestamp:string,
-      Status_Description:string,
-      Latitude:number,
-      Longitude:number
-    }
+interface LiveParking {
+  Status_Timestamp:string,
+  Status_Description:string,
+  Latitude:number,
+  Longitude:number
+}
 
-    interface Occupancy {
-      RoadSegmentDescription: string,
-      [time: string]: number | string; 
-    }
+interface Occupancy {
+  RoadSegmentDescription: string,
+  [time: string]: number | string; 
+}
 
 const HomePage = () => {
   const [showEcoSpots, setShowEcoSpots] = useState(false);
@@ -811,81 +812,6 @@ const HomePage = () => {
     let overviewLayer = L.layerGroup().addTo(map); // for bay center points
     let detailLayer = L.layerGroup();              // for individual spots
 
-    // fetch('http://localhost:5000/api/parking')
-    // .then((res) => res.json())
-    // .then((data) => {
-    //   data.data.forEach((obj:Parking, index:number)=>{
-    //     // Add a circle
-    //     const circle = L.circle([obj.Latitude,obj.Longitude], {
-    //       color: 'blue',           // Circle stroke color
-    //       fillColor: '#30f',       // Fill color
-    //       fillOpacity: 0.3,        // Fill opacity
-    //       radius: 15            // Radius in meters
-    //     }).addTo(overviewLayer);
-
-    //     // Add click event to show number in a popup
-    //     circle.on('click', () => {
-    //       L.popup()
-    //         .setLatLng([obj.Latitude,obj.Longitude])
-    //         .setContent(
-    //           `<div>
-    //             <strong>RoadSegmentDescription:</strong> ${obj.RoadSegmentDescription}<br>
-    //             <strong>Available Parks:</strong> ${obj.available_parks}<br>
-    //             <strong>Restriction Days:</strong> ${obj.Restriction_Days}<br>
-    //             <strong>Restriction Start:</strong> ${obj.Restriction_Start}<br>
-    //             <strong>Restriction End:</strong> ${obj.Restriction_End}<br>
-    //             <strong>Restriction Display:</strong> ${obj.Restriction_Display}
-    //           </div>`
-    //         )
-    //         .openOn(map);
-    //     });
-
-    //   })
-    // })
-    // .catch((err) => console.error(err));
-
-    // fetch('http://localhost:5000/api/occupancy')
-    // .then((res) => res.json())
-    // .then((data) => {
-    //   data.data.forEach((obj:Occupancy, index:number)=>{
-
-    //     const canvasId = `popupChart-${index}`;
-    //     const popupContent = `
-    //       <div style="width: 220px; height: 130px;">
-    //         <h4>Road Segment Description: ${obj.RoadSegmentDescription}</h4>
-    //         <canvas id="${canvasId}" width="200" height="100" style="display: block; margin: 0 auto;"></canvas>
-    //       </div>
-    //     `;
-
-    //     circle.bindPopup(popupContent, { maxWidth: 300, minWidth: 300 });
-    //     circle.on('popupopen', () => {
-    //       // Wait for popup to open so canvas is in DOM
-    //       const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
-    //       if (!canvas) return; // canvas not found, exit early
-    //       const ctx = canvas.getContext('2d');
-    //       if (!ctx) return; // context not available, exit early
-    //       new Chart(ctx, {
-    //         type: 'line',
-    //         data: {
-    //           labels: ['A', 'B', 'C', 'D'],
-    //           datasets: [{
-    //             label: 'Sample Data',
-    //             data: [12, 19, 3, 5],
-    //             backgroundColor: 'rgba(54, 162, 235, 0.7)',
-    //           }]
-    //         },
-    //         options: {
-    //           responsive: false,
-    //           animation: false,
-    //           scales: { x: { display: false }, y: { display: false } },
-    //           plugins: { legend: { display: false } },
-    //         }
-    //       });
-    //     });
-    //   })
-    // })
-    // .catch((err) => console.error(err));
-
     fetch('http://localhost:5000/api/live')
     .then((res) => res.json())
     .then((data) => {
@@ -1067,7 +993,12 @@ const HomePage = () => {
 
               {topParkingSpots.length > 0 ? (
                 <>
-                  <TopSpotCard>
+                  <TopSpotCard onClick={()=>{
+                        const mapContainer = document.getElementById('map');
+                        window.scrollTo({top:950, behavior:'smooth'})
+                        const map = (mapContainer as any).leafletMap;
+                        map.setView([topParkingSpots[0].latitude,topParkingSpots[0].longitude], 17)
+                    }}>
                     <SpotName>{topParkingSpots[0]?.name}</SpotName>
                     <SpotDetails>
                       <span><strong>{topParkingSpots[0]?.availableSpots}</strong> spots available</span>
@@ -1076,7 +1007,12 @@ const HomePage = () => {
                   </TopSpotCard>
 
                   {topParkingSpots.slice(1, 5).map((spot, index) => (
-                    <SpotCard key={spot.id}>
+                    <SpotCard key={spot.id} onClick={()=>{
+                        const mapContainer = document.getElementById('map');
+                        window.scrollTo({top:950, behavior:'smooth'})
+                        const map = (mapContainer as any).leafletMap;
+                        map.setView([spot.latitude,spot.longitude], 17)
+                    }}>
                       <SpotName>{spot.name}</SpotName>
                       <SpotDetails>
                         <span><strong>{spot.availableSpots}</strong> spots available</span>

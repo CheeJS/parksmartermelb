@@ -517,13 +517,14 @@ app.get('/api/top-parking', async (req, res) => {
       SELECT 
         RoadSegmentDescription,
         available_parks,
-        Restriction_Display
+        Restriction_Display,
+        Latitude,
+        Longitude
       FROM available_parking_live
       WHERE available_parks > 0
       ORDER BY available_parks DESC
       LIMIT 5
     `;
-
     const [topSpots] = await connection.query(query);
     
     connection.release();
@@ -533,9 +534,10 @@ app.get('/api/top-parking', async (req, res) => {
       name: spot.RoadSegmentDescription,
       availableSpots: spot.available_parks,
       totalSpots: spot.available_parks + Math.floor(Math.random() * 5) + 5, // Estimate total
-      price: spot.Restriction_Display
+      price: spot.Restriction_Display,
+      latitude: spot.Latitude,
+      longitude: spot.Longitude,
     }));
-
     console.log(`🏆 Returning ${topParkingResults.length} top parking spots`);
     
     res.json({
