@@ -1006,6 +1006,9 @@ const HomePage = () => {
   });
       
   map.addControl(new ModeControl());
+
+  // Load initial map data on first render
+  loadMapData();
   }
 }, []);
 

@@ -39,8 +39,8 @@ app.use((req, res, next) => {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Handle preflight requests for all routes
-app.options('*', cors(corsOptions));
+// Handle preflight requests for all routes (Express 5 compatible)
+app.options(/.*/, cors(corsOptions));
 
 // Basic route
 app.get('/', (req, res) => {
