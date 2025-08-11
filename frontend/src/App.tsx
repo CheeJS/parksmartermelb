@@ -72,7 +72,7 @@ function App() {
           <NavContainer>
             <Logo to="/">
               <span role="img" aria-label="parking">🅿️</span>
-              ParkSmart Melbourne
+              ParkSmarter Melbourne
             </Logo>
             <NavLinks>
               <NavLink to="/">Home</NavLink>

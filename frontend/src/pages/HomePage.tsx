@@ -972,42 +972,42 @@ const HomePage = () => {
       (mapContainer as any).currentMode = 'overview';
 
       // Add mode control
-      let ModeControl = L.Control.extend({
-        options: { position: 'topright' },
-        onAdd: function(map:any) {
-          let container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-          container.innerHTML = 'Overview';
+    let ModeControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(map:any) {
+      let container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+      container.innerHTML = 'Overview';
 
-          // Prevent click from affecting the map
-          L.DomEvent.disableClickPropagation(container);
-          L.DomEvent.disableScrollPropagation(container);
+      // Prevent click from affecting the map
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
 
-          container.onclick = function() {
+      container.onclick = function() {
             const mapContainer = document.getElementById('map');
             const currentMode = (mapContainer as any).currentMode;
             const overviewLayer = (mapContainer as any).overviewLayer;
             const detailLayer = (mapContainer as any).detailLayer;
 
-            if (currentMode === 'overview') {
-              map.removeLayer(overviewLayer);
-              map.addLayer(detailLayer);
+        if (currentMode === 'overview') {
+          map.removeLayer(overviewLayer);
+          map.addLayer(detailLayer);
               (mapContainer as any).currentMode = 'detail';
-              container.innerHTML = 'Detail';
-            } else {
-              map.removeLayer(detailLayer);
-              map.addLayer(overviewLayer);
+          container.innerHTML = 'Detail';
+        } else {
+          map.removeLayer(detailLayer);
+          map.addLayer(overviewLayer);
               (mapContainer as any).currentMode = 'overview';
-              container.innerHTML = 'Overview';
-            }
-          };
-
-          return container;
+          container.innerHTML = 'Overview';
         }
-      });
-      
-      map.addControl(new ModeControl());
+      };
+
+      return container;
     }
-  }, []);
+  });
+      
+  map.addControl(new ModeControl());
+  }
+}, []);
 
   // Format distance helper function
   const formatDistance = (meters: number): string => {
@@ -1082,7 +1082,7 @@ const HomePage = () => {
                     🔄 Search results last updated: {lastSearchUpdate.toLocaleTimeString()}
                   </div>
                 )}
-                <ParkingResults>
+              <ParkingResults>
                 {parkingResults.length > 0 ? (
                   parkingResults.slice(0, 5).map((spot) => (
                     <ParkingCard key={spot.id} onClick={()=>{

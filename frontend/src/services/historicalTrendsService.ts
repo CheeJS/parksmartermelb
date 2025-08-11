@@ -66,7 +66,7 @@ export async function fetchPopulationData(): Promise<PopulationData[]> {
  */
 export async function fetchVehicleData(): Promise<VehicleData[]> {
   try {
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://api.parksmartermelb.me';
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
     const response = await fetch(`${apiUrl}/api/vehicle-census`);
 
     if (!response.ok) {
@@ -92,7 +92,7 @@ export async function fetchVehicleData(): Promise<VehicleData[]> {
  */
 export async function fetchCarOwnershipAnalysis(): Promise<CarOwnershipAnalysisData> {
   try {
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://api.parksmartermelb.me';
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
     
     // Try the simple test endpoint first to verify connectivity
     console.log('🔄 Attempting to fetch car ownership analysis...');
