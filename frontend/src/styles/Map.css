@@ -1,0 +1,8 @@
+.leaflet-control-custom {
+    background-color: white;
+    cursor : 'pointer';
+    padding : 10px;
+    user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}

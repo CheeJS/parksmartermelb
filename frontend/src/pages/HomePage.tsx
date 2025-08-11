@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
 import { useLoadScript, Autocomplete } from '@react-google-maps/api';
+import '../styles/Map.css';
 
 const MapControls = styled.div`
   display: flex;
@@ -762,16 +763,37 @@ const HomePage = () => {
     })
     .catch((err) => console.error(err));
 
-    // Show/hide based on zoom
-    map.on('zoomend', () => {
-      if (map.getZoom() >= 18) {
-        if (map.hasLayer(overviewLayer)) map.removeLayer(overviewLayer);
-        if (!map.hasLayer(detailLayer)) map.addLayer(detailLayer);
-      } else {
-        if (map.hasLayer(detailLayer)) map.removeLayer(detailLayer);
-        if (!map.hasLayer(overviewLayer)) map.addLayer(overviewLayer);
-      }
-    });
+    let ModeControl = L.Control.extend({
+    options: { position: 'topright' },
+    onAdd: function(map:any) {
+      let container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+      container.innerHTML = 'Overview';
+
+
+      let currentMode = 'overview';
+      // Prevent click from affecting the map
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
+
+      container.onclick = function() {
+        if (currentMode === 'overview') {
+          map.removeLayer(overviewLayer);
+          map.addLayer(detailLayer);
+          currentMode = 'detail';
+          container.innerHTML = 'Detail';
+        } else {
+          map.removeLayer(detailLayer);
+          map.addLayer(overviewLayer);
+          currentMode = 'overview';
+          container.innerHTML = 'Overview';
+        }
+      };
+
+      return container;
+    }
+  });
+  // Add the control to the map
+  map.addControl(new ModeControl());
   }
 }, []);
 
