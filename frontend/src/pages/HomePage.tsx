@@ -5,6 +5,9 @@ import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { Chart } from 'chart.js';
 import '../styles/Map.css';
 
+// API configuration
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
+
 const MapControls = styled.div`
   display: flex;
   gap: 1rem;
@@ -580,7 +583,7 @@ const HomePage = () => {
   useEffect(() => {
     const fetchHomeStats = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/home-stats');
+        const response = await fetch(`${API_BASE_URL}/api/home-stats`);
         if (response.ok) {
           const result = await response.json();
           setHomeStats(result.data);
@@ -602,7 +605,7 @@ const HomePage = () => {
   useEffect(() => {
     const fetchTopParkingSpots = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/top-parking');
+        const response = await fetch(`${API_BASE_URL}/api/top-parking`);
         if (response.ok) {
           const result = await response.json();
           setTopParkingSpots(result.data);
@@ -646,7 +649,7 @@ const HomePage = () => {
     
     try {
       // Use coordinates from autocomplete
-      const response = await fetch('http://localhost:5000/api/simple-parking-search', {
+      const response = await fetch(`${API_BASE_URL}/api/simple-parking-search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -716,8 +719,8 @@ const HomePage = () => {
 
 
     Promise.all([
-      fetch('http://localhost:5000/api/parking').then(res => res.json()),
-      fetch('http://localhost:5000/api/occupancy').then(res => res.json())
+      fetch(`${API_BASE_URL}/api/parking`).then(res => res.json()),
+      fetch(`${API_BASE_URL}/api/occupancy`).then(res => res.json())
     ])
     .then(([parkingData, occupancyData]) => {
       const parkingArray: Parking[] = parkingData.data;
@@ -812,7 +815,7 @@ const HomePage = () => {
     let overviewLayer = L.layerGroup().addTo(map); // for bay center points
     let detailLayer = L.layerGroup();              // for individual spots
 
-    fetch('http://localhost:5000/api/live')
+    fetch(`${API_BASE_URL}/api/live`)
     .then((res) => res.json())
     .then((data) => {
       data.data.forEach((parking:LiveParking)=>{

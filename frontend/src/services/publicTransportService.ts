@@ -69,7 +69,8 @@ export async function fetchNearbyTransportStops(
 ): Promise<PublicTransportStop[]> {
   try {
     // Use the backend API endpoint
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
     const response = await fetch(`${apiUrl}/api/transport-stops`, {
       method: 'POST',
       headers: {
