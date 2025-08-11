@@ -565,13 +565,13 @@ const HomePage = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   
   // Parking search state
-  const [destination, setDestination] = useState('');
-  const [destinationCoords, setDestinationCoords] = useState<{lat: number, lng: number} | null>(null);
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const [destinationLocation, setDestinationLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
+  const [destinationAutocomplete, setDestinationAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [parkingResults, setParkingResults] = useState<SimpleParkingSpot[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [topParkingSpots, setTopParkingSpots] = useState<TopParkingSpot[]>([]);
+  const [destinationInputValue, setDestinationInputValue] = useState('');
 
   // Google Maps setup
   const { isLoaded, loadError } = useLoadScript({
@@ -622,57 +622,84 @@ const HomePage = () => {
   }, []);
 
   // Autocomplete callbacks
-  const onAutocompleteLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
-    setAutocomplete(autocomplete);
+  const onDestinationLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
+    setDestinationAutocomplete(autocomplete);
   }, []);
 
-  const onPlaceChanged = () => {
-    if (autocomplete) {
-      const place = autocomplete.getPlace();
+  const onDestinationPlaceChanged = () => {
+    if (destinationAutocomplete) {
+      const place = destinationAutocomplete.getPlace();
+      console.log('📍 Destination selected:', place);
       if (place.geometry?.location) {
-        const coords = {
+        const newLocation = {
           lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng()
+          lng: place.geometry.location.lng(),
+          address: place.formatted_address || place.name || ''
         };
-        setDestinationCoords(coords);
-        setDestination(place.formatted_address || place.name || '');
+        console.log('✅ Destination set:', newLocation);
+        setDestinationLocation(newLocation);
+        setDestinationInputValue(newLocation.address);
+        
+        // Automatically search for parking when destination is selected
+        searchParkingForLocation(newLocation);
+      } else {
+        console.log('❌ No geometry/location found in place');
       }
+    } else {
+      console.log('❌ No destination autocomplete available');
     }
   };
 
-  // Handle parking search
-  const handleParkingSearch = async () => {
-    if (!destination.trim() || !destinationCoords) return;
-    
+  // Simplified parking search function
+  const searchParkingForLocation = async (location: {lat: number, lng: number, address: string}) => {
+    console.log('🔍 Searching parking for:', location.address, 'at coordinates:', location.lat, location.lng);
     setIsSearching(true);
     setHasSearched(true);
     
     try {
-      // Use coordinates from autocomplete
+      const requestBody = {
+        destinationLat: location.lat,
+        destinationLng: location.lng,
+        radius: 1 // 1km radius
+      };
+      
+      console.log('📤 Sending parking search request to:', `${API_BASE_URL}/api/simple-parking-search`);
+      
       const response = await fetch(`${API_BASE_URL}/api/simple-parking-search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          destinationLat: destinationCoords.lat,
-          destinationLng: destinationCoords.lng,
-          radius: 1 // 1km radius
-        })
+        body: JSON.stringify(requestBody)
       });
+      
+      console.log('📥 Response status:', response.status, response.statusText);
       
       if (response.ok) {
         const result = await response.json();
+        console.log('✅ Found', result.data?.length || 0, 'parking spots');
         setParkingResults(result.data || []);
       } else {
+        const errorText = await response.text();
+        console.error('❌ API error:', response.status, errorText);
         setParkingResults([]);
       }
     } catch (error) {
-      console.error('Error searching parking:', error);
+      console.error('❌ Network error:', error);
       setParkingResults([]);
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Handle manual parking search (button click)
+  const handleParkingSearch = async () => {
+    if (!destinationLocation) {
+      console.log('❌ No destination selected');
+      return;
+    }
+    
+    await searchParkingForLocation(destinationLocation);
   };
 
   const formatDistance = (meters: number): string => {
@@ -899,14 +926,14 @@ const HomePage = () => {
             <SearchForm>
               {isLoaded ? (
                 <Autocomplete
-                  onLoad={onAutocompleteLoad}
-                  onPlaceChanged={onPlaceChanged}
+                  onLoad={onDestinationLoad}
+                  onPlaceChanged={onDestinationPlaceChanged}
                 >
                   <SearchInput
                     type="text"
                     placeholder="Enter destination address..."
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
+                    value={destinationInputValue}
+                    onChange={(e) => setDestinationInputValue(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleParkingSearch()}
                   />
                 </Autocomplete>
@@ -919,7 +946,7 @@ const HomePage = () => {
               )}
               <SearchButton 
                 onClick={handleParkingSearch}
-                disabled={isSearching || !destination.trim() || !destinationCoords || !isLoaded}
+                disabled={isSearching || !destinationLocation || !isLoaded}
               >
                 {isSearching ? 'Searching...' : 'Find Parking'}
               </SearchButton>
@@ -932,7 +959,7 @@ const HomePage = () => {
                         const mapContainer = document.getElementById('map');
                         window.scrollTo({top:1600, behavior:'smooth'})
                         const map = (mapContainer as any).leafletMap;
-                        map.setView([spot.latitude,spot.longitude], 17)
+                        map.setView([parseFloat(spot.latitude),parseFloat(spot.longitude)], 17)
                     }}>
                       <ParkingHeader>
                         <ParkingName>{spot.name}</ParkingName>

@@ -117,7 +117,7 @@ export async function findParkingNearDestination(
 ): Promise<ParkingRecommendation[]> {
   try {
     // Use the backend API endpoint for real parking data
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
     const response = await fetch(`${apiUrl}/api/parking-recommendations`, {
       method: 'POST',
       headers: {

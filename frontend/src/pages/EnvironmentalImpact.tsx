@@ -601,6 +601,10 @@ const EnvironmentalImpact = () => {
   const [routeError, setRouteError] = useState<string>('');
   const [parkingRecommendations, setParkingRecommendations] = useState<ParkingRecommendation[]>([]);
   const [isLoadingParking, setIsLoadingParking] = useState(false);
+  
+  // Input field values for controlled components
+  const [startInputValue, setStartInputValue] = useState('');
+  const [endInputValue, setEndInputValue] = useState('');
 
   // Travel mode options with descriptions
   const travelModes = [
@@ -645,19 +649,22 @@ const EnvironmentalImpact = () => {
   useEffect(() => {
     const fetchParkingRecommendations = async () => {
       if (!endLocation) {
+        console.log('🅿️ No destination selected, clearing parking recommendations');
         setParkingRecommendations([]);
         return;
       }
 
+      console.log('🅿️ Fetching parking recommendations for:', endLocation.address, 'at coordinates:', endLocation.lat, endLocation.lng);
       setIsLoadingParking(true);
       try {
         const recommendations = await findParkingNearDestination(
           endLocation.lat,
           endLocation.lng
         );
+        console.log('🅿️ Received', recommendations.length, 'parking recommendations');
         setParkingRecommendations(recommendations);
       } catch (error) {
-        console.error('Error fetching parking recommendations:', error);
+        console.error('❌ Error fetching parking recommendations:', error);
         setParkingRecommendations([]);
       } finally {
         setIsLoadingParking(false);
@@ -679,11 +686,13 @@ const EnvironmentalImpact = () => {
     if (startAutocomplete) {
       const place = startAutocomplete.getPlace();
       if (place.geometry?.location) {
-        setStartLocation({
+        const newLocation = {
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
           address: place.formatted_address || place.name || ''
-        });
+        };
+        setStartLocation(newLocation);
+        setStartInputValue(newLocation.address);
       }
     }
   };
@@ -692,11 +701,14 @@ const EnvironmentalImpact = () => {
     if (endAutocomplete) {
       const place = endAutocomplete.getPlace();
       if (place.geometry?.location) {
-        setEndLocation({
+        const newLocation = {
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
           address: place.formatted_address || place.name || ''
-        });
+        };
+        setEndLocation(newLocation);
+        setEndInputValue(newLocation.address);
+        console.log('🎯 New destination selected:', newLocation.address, 'Coordinates:', newLocation.lat, newLocation.lng);
       }
     }
   };
@@ -737,11 +749,9 @@ const EnvironmentalImpact = () => {
             address = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
           }
           
-          setStartLocation({
-            lat,
-            lng,
-            address
-          });
+          const newLocation = { lat, lng, address };
+          setStartLocation(newLocation);
+          setStartInputValue(address);
         },
         (error) => {
           console.error('Error getting current location:', error);
@@ -886,12 +896,12 @@ const EnvironmentalImpact = () => {
             <Autocomplete
               onLoad={onStartLoad}
               onPlaceChanged={onStartPlaceChanged}
-              key={`start-${startLocation?.address || 'empty'}`}
             >
               <SearchInput
                 type="text"
                 placeholder="Enter starting point"
-                defaultValue={startLocation?.address || ''}
+                value={startInputValue}
+                onChange={(e) => setStartInputValue(e.target.value)}
               />
             </Autocomplete>
           </InputWrapper>
@@ -902,12 +912,12 @@ const EnvironmentalImpact = () => {
         <Autocomplete
           onLoad={onEndLoad}
           onPlaceChanged={onEndPlaceChanged}
-          key={`end-${endLocation?.address || 'empty'}`}
         >
           <SearchInput
             type="text"
             placeholder="Enter destination"
-            defaultValue={endLocation?.address || ''}
+            value={endInputValue}
+            onChange={(e) => setEndInputValue(e.target.value)}
           />
         </Autocomplete>
         
