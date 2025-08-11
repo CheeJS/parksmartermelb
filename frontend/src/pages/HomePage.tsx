@@ -231,6 +231,34 @@ const DataInfo = styled.div`
   text-align: center;
   color: #2F855A;
   font-size: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+`;
+
+const RefreshButton = styled.button`
+  background: #48BB78;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: #38A169;
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
 `;
 
 const TransportBreakdown = styled.div`
@@ -572,6 +600,11 @@ const HomePage = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [topParkingSpots, setTopParkingSpots] = useState<TopParkingSpot[]>([]);
   const [destinationInputValue, setDestinationInputValue] = useState('');
+  const [lastSearchUpdate, setLastSearchUpdate] = useState<Date | null>(null);
+  
+  // Add state for last map update and loading state
+  const [lastMapUpdate, setLastMapUpdate] = useState<Date | null>(null);
+  const [isMapLoading, setIsMapLoading] = useState(false);
 
   // Google Maps setup
   const { isLoaded, loadError } = useLoadScript({
@@ -579,9 +612,245 @@ const HomePage = () => {
     libraries: ['places']
   });
 
-  // Fetch homepage statistics
+  // Function to load map data (declared early to avoid hoisting issues)
+  const loadMapData = useCallback(async () => {
+    console.log('🔄 Loading map data...');
+    setIsMapLoading(true);
+    
+    const mapContainer = document.getElementById('map');
+    
+    if (!mapContainer || !(mapContainer as any).leafletMap) {
+      console.log('❌ Map not initialized yet');
+      setIsMapLoading(false);
+      return;
+    }
+
+    const L = (window as any).L;
+    const overviewLayer = (mapContainer as any).overviewLayer;
+    const detailLayer = (mapContainer as any).detailLayer;
+
+    if (!overviewLayer || !detailLayer) {
+      console.log('❌ Map layers not initialized yet');
+      setIsMapLoading(false);
+      return;
+    }
+
+    try {
+      // Clear existing layers
+      overviewLayer.clearLayers();
+      detailLayer.clearLayers();
+
+      // Fetch fresh data
+      const [parkingResponse, occupancyResponse, liveResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/parking`),
+        fetch(`${API_BASE_URL}/api/occupancy`),
+        fetch(`${API_BASE_URL}/api/live`)
+      ]);
+
+      const [parkingData, occupancyData, liveData] = await Promise.all([
+        parkingResponse.json(),
+        occupancyResponse.json(),
+        liveResponse.json()
+      ]);
+
+      const parkingArray: Parking[] = parkingData.data;
+      const occupancyArray: Occupancy[] = occupancyData.data;
+      const liveArray: LiveParking[] = liveData.data;
+
+      // Create a lookup map for occupancy
+      const occupancyMap = new Map<string, Occupancy>();
+      occupancyArray.forEach(o => occupancyMap.set(o.RoadSegmentDescription, o));
+
+      // Add parking overview data
+      parkingArray.forEach((p, index) => {
+        const occupancy = occupancyMap.get(p.RoadSegmentDescription);
+
+        const circle = L.circle([p.Latitude, p.Longitude], {
+          color: 'blue',
+          fillColor: '#30f',
+          fillOpacity: 0.3,
+          radius: 15,
+        }).addTo(overviewLayer);
+
+        const canvasId = `popupChart-${index}-${Date.now()}`;
+
+        const occupancyChartHTML = occupancy
+          ? `<canvas id="${canvasId}" width="500" height="250" style="display: block; margin: 0 auto;"></canvas>`
+          : '<div>No occupancy data available</div>';
+
+        const popupContent = `
+          ${occupancy? `<div style="width: 500px; height: 350px;">` : `<div style="width: 250px; height: 100px;">`}
+            <h4>${p.RoadSegmentDescription}</h4>
+            <div><strong>Available Parks:</strong> ${p.available_parks}</div>
+            <div><strong>Restriction:</strong> ${p.Restriction_Days} ${p.Restriction_Start} - ${p.Restriction_End}</div>
+            ${occupancyChartHTML}
+          </div>
+        `;
+
+        circle.bindPopup(popupContent, {maxWidth: 500, minWidth: 200});
+
+        // Draw chart if occupancy data exists
+        circle.on('popupopen', () => {
+          if (!occupancy) return;
+
+          const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
+          if (!canvas) return;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+
+          const labels = Object.keys(occupancy).filter(k => k !== 'RoadSegmentDescription');
+          const dataPoints = labels.map(label => Number((occupancy[label] as string).replace('%', '')) / 100);
+
+          new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels,
+              datasets: [{
+                label: 'Occupancy',
+                data: dataPoints,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.3)',
+              }]
+            },
+            options: {
+              responsive: false,
+              animation: false,
+              scales: {
+                x: {
+                  ticks: {
+                    minRotation: 90,
+                    maxRotation: 90,
+                    autoSkip: true,
+                    maxTicksLimit: 12
+                  }
+                },
+                y: {
+                  beginAtZero: true
+                }
+              },
+              plugins: {
+                legend: { display: false }
+              }
+            }
+          });
+        });
+      });
+
+      // Add live parking detail data
+      liveArray.forEach((parking: LiveParking) => {
+        const point = L.circle([parking.latitude, parking.longitude], {
+          radius: 1,
+          color: parking.status_description === "Present" ? "green" : "red",
+          fillOpacity: 0.8
+        }).addTo(detailLayer);
+
+        point.on('click', () => {
+          L.popup()
+            .setLatLng([parking.latitude, parking.longitude])
+            .setContent(
+              `<div>
+                <strong>Last updated:</strong> ${parking.status_timestamp}<br>
+              </div>`
+            )
+            .openOn((mapContainer as any).leafletMap);
+        });
+      });
+
+      setLastMapUpdate(new Date());
+      console.log('✅ Map data refreshed successfully');
+
+    } catch (error) {
+      console.error('❌ Error loading map data:', error);
+    } finally {
+      setIsMapLoading(false);
+    }
+  }, []);
+
+  // Simplified parking search function (declared early)
+  const searchParkingForLocation = useCallback(async (location: {lat: number, lng: number, address: string}) => {
+    console.log('🔍 Searching parking for:', location.address, 'at coordinates:', location.lat, location.lng);
+    setIsSearching(true);
+    setHasSearched(true);
+    
+    try {
+      const requestBody = {
+        destinationLat: location.lat,
+        destinationLng: location.lng,
+        radius: 1 // 1km radius
+      };
+      
+      console.log('📤 Sending parking search request to:', `${API_BASE_URL}/api/simple-parking-search`);
+      
+      const response = await fetch(`${API_BASE_URL}/api/simple-parking-search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      });
+      
+      console.log('📥 Response status:', response.status, response.statusText);
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Found', result.data?.length || 0, 'parking spots');
+        setParkingResults(result.data || []);
+        setLastSearchUpdate(new Date());
+      } else {
+        const errorText = await response.text();
+        console.error('❌ API error:', response.status, errorText);
+        setParkingResults([]);
+      }
+    } catch (error) {
+      console.error('❌ Network error:', error);
+      setParkingResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []); // Empty dependency array since it doesn't depend on any state
+
+  // Master refresh function to update all data
+  const refreshAllData = useCallback(async () => {
+    console.log('🔄 Refreshing all data...');
+    
+    // Refresh home stats
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/home-stats`);
+      if (response.ok) {
+        const result = await response.json();
+        setHomeStats(result.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing home stats:', error);
+    }
+    
+    // Refresh top parking spots
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/top-parking`);
+      if (response.ok) {
+        const result = await response.json();
+        setTopParkingSpots(result.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing top parking spots:', error);
+    }
+    
+    // Refresh map data
+    await loadMapData();
+    
+    // Refresh search results if user has searched
+    if (destinationLocation && hasSearched) {
+      await searchParkingForLocation(destinationLocation);
+    }
+    
+    console.log('✅ All data refreshed successfully');
+  }, [destinationLocation, hasSearched, loadMapData, searchParkingForLocation]);
+
+  // Initial data load and setup master refresh interval
   useEffect(() => {
-    const fetchHomeStats = async () => {
+    const loadInitialData = async () => {
+      // Load initial stats
       try {
         const response = await fetch(`${API_BASE_URL}/api/home-stats`);
         if (response.ok) {
@@ -589,21 +858,12 @@ const HomePage = () => {
           setHomeStats(result.data);
         }
       } catch (error) {
-        console.error('Error fetching home stats:', error);
+        console.error('Error fetching initial home stats:', error);
       } finally {
         setIsLoadingStats(false);
       }
-    };
-    
-    fetchHomeStats();
-    // Refresh every 10 minutes
-    const interval = setInterval(fetchHomeStats, 10 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
 
-  // Fetch top parking spots
-  useEffect(() => {
-    const fetchTopParkingSpots = async () => {
+      // Load initial top parking spots
       try {
         const response = await fetch(`${API_BASE_URL}/api/top-parking`);
         if (response.ok) {
@@ -611,15 +871,21 @@ const HomePage = () => {
           setTopParkingSpots(result.data);
         }
       } catch (error) {
-        console.error('Error fetching top parking spots:', error);
+        console.error('Error fetching initial top parking spots:', error);
       }
     };
     
-    fetchTopParkingSpots();
-    // Refresh every 5 minutes
-    const interval = setInterval(fetchTopParkingSpots, 5 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, []);
+    // Load initial data
+    loadInitialData();
+    
+    // Set up single master refresh interval for all data
+    const masterInterval = setInterval(() => {
+      console.log('🕐 Master refresh timer triggered');
+      refreshAllData();
+    }, 10 * 60 * 1000);
+    
+    return () => clearInterval(masterInterval);
+  }, [refreshAllData]);
 
   // Autocomplete callbacks
   const onDestinationLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
@@ -650,48 +916,6 @@ const HomePage = () => {
     }
   };
 
-  // Simplified parking search function
-  const searchParkingForLocation = async (location: {lat: number, lng: number, address: string}) => {
-    console.log('🔍 Searching parking for:', location.address, 'at coordinates:', location.lat, location.lng);
-    setIsSearching(true);
-    setHasSearched(true);
-    
-    try {
-      const requestBody = {
-        destinationLat: location.lat,
-        destinationLng: location.lng,
-        radius: 1 // 1km radius
-      };
-      
-      console.log('📤 Sending parking search request to:', `${API_BASE_URL}/api/simple-parking-search`);
-      
-      const response = await fetch(`${API_BASE_URL}/api/simple-parking-search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody)
-      });
-      
-      console.log('📥 Response status:', response.status, response.statusText);
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log('✅ Found', result.data?.length || 0, 'parking spots');
-        setParkingResults(result.data || []);
-      } else {
-        const errorText = await response.text();
-        console.error('❌ API error:', response.status, errorText);
-        setParkingResults([]);
-      }
-    } catch (error) {
-      console.error('❌ Network error:', error);
-      setParkingResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
   // Handle manual parking search (button click)
   const handleParkingSearch = async () => {
     if (!destinationLocation) {
@@ -702,204 +926,96 @@ const HomePage = () => {
     await searchParkingForLocation(destinationLocation);
   };
 
+  // Initialize map once
+  useEffect(() => {
+    const mapContainer = document.getElementById('map');
+
+    // Check if the map is already initialized
+    if (mapContainer && !(mapContainer as any)._leaflet_id) {
+      const L = (window as any).L;
+
+      // Default fallback location
+      const defaultLatLng = [-37.8136, 144.9631];
+
+      // Initialize map
+      const map = L.map('map').setView(defaultLatLng, 13);
+
+      // Store map instance for later access
+      (mapContainer as any).leafletMap = map;
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+      }).addTo(map);
+
+      // Try to get user geolocation
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            map.setView([lat, lng], 15);
+            L.marker([lat, lng]).addTo(map).bindPopup('You are here').openPopup();
+          },
+          (error) => {
+            console.error('Geolocation error:', error);
+          }
+        );
+      }
+
+      // Initialize layer groups
+      const overviewLayer = L.layerGroup().addTo(map);
+      const detailLayer = L.layerGroup();
+
+      // Store layer references for updating
+      (mapContainer as any).overviewLayer = overviewLayer;
+      (mapContainer as any).detailLayer = detailLayer;
+      (mapContainer as any).currentMode = 'overview';
+
+      // Add mode control
+      let ModeControl = L.Control.extend({
+        options: { position: 'topright' },
+        onAdd: function(map:any) {
+          let container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+          container.innerHTML = 'Overview';
+
+          // Prevent click from affecting the map
+          L.DomEvent.disableClickPropagation(container);
+          L.DomEvent.disableScrollPropagation(container);
+
+          container.onclick = function() {
+            const mapContainer = document.getElementById('map');
+            const currentMode = (mapContainer as any).currentMode;
+            const overviewLayer = (mapContainer as any).overviewLayer;
+            const detailLayer = (mapContainer as any).detailLayer;
+
+            if (currentMode === 'overview') {
+              map.removeLayer(overviewLayer);
+              map.addLayer(detailLayer);
+              (mapContainer as any).currentMode = 'detail';
+              container.innerHTML = 'Detail';
+            } else {
+              map.removeLayer(detailLayer);
+              map.addLayer(overviewLayer);
+              (mapContainer as any).currentMode = 'overview';
+              container.innerHTML = 'Overview';
+            }
+          };
+
+          return container;
+        }
+      });
+      
+      map.addControl(new ModeControl());
+    }
+  }, []);
+
+  // Format distance helper function
   const formatDistance = (meters: number): string => {
     if (meters < 1000) {
       return `${Math.round(meters)}m`;
     }
     return `${(meters / 1000).toFixed(1)}km`;
   };
-
-  useEffect(() => {
-  const mapContainer = document.getElementById('map');
-
-  // Check if the map is already initialized
-  if (mapContainer && !(mapContainer as any)._leaflet_id) {
-    const L = (window as any).L;
-
-    // Default fallback location
-    const defaultLatLng = [-37.8136, 144.9631];
-
-    // Initialize map
-    const map = L.map('map').setView(defaultLatLng, 13);
-
-    // Store DOM
-    (mapContainer as any).leafletMap = map;
-
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-    }).addTo(map);
-
-    // Try to get user geolocation
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          map.setView([lat, lng], 15);
-          L.marker([lat, lng]).addTo(map).bindPopup('You are here').openPopup();
-        },
-        (error) => {
-          console.error('Geolocation error:', error);
-        }
-      );
-    }
-
-
-    Promise.all([
-      fetch(`${API_BASE_URL}/api/parking`).then(res => res.json()),
-      fetch(`${API_BASE_URL}/api/occupancy`).then(res => res.json())
-    ])
-    .then(([parkingData, occupancyData]) => {
-      const parkingArray: Parking[] = parkingData.data;
-      const occupancyArray: Occupancy[] = occupancyData.data;
-
-      // Create a lookup map for occupancy by a common key, e.g., RoadSegmentDescription
-      const occupancyMap = new Map<string, Occupancy>();
-      occupancyArray.forEach(o => occupancyMap.set(o.RoadSegmentDescription, o));
-
-      parkingArray.forEach((p, index) => {
-        // Find occupancy data for this parking segment
-        const occupancy = occupancyMap.get(p.RoadSegmentDescription);
-
-        // Create circle on map
-        const circle = L.circle([p.Latitude, p.Longitude], {
-          color: 'blue',
-          fillColor: '#30f',
-          fillOpacity: 0.3,
-          radius: 15,
-        }).addTo(overviewLayer);
-
-        // Create popup content by combining parking + occupancy info
-        const canvasId = `popupChart-${index}`;
-
-        const occupancyChartHTML = occupancy
-          ? `<canvas id="${canvasId}" width="500" height="250" style="display: block; margin: 0 auto;"></canvas>`
-          : '<div>No occupancy data available</div>';
-
-        const popupContent = `
-          ${occupancy? `<div style="width: 500px; height: 350px;">` : `<div style="width: 250px; height: 100px;">`}
-            <h4>${p.RoadSegmentDescription}</h4>
-            <div><strong>Available Parks:</strong> ${p.available_parks}</div>
-            <div><strong>Restriction:</strong> ${p.Restriction_Days} ${p.Restriction_Start} - ${p.Restriction_End}</div>
-            ${occupancyChartHTML}
-          </div>
-        `;
-
-        circle.bindPopup(popupContent, {maxWidth: 500, minWidth: 200});
-
-        // Draw chart if occupancy data exists
-        circle.on('popupopen', () => {
-          if (!occupancy) return; // no occupancy, skip chart
-
-          const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
-          if (!canvas) return;
-
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return;
-
-          // Example: create a line chart using occupancy data — replace labels and data as needed
-          const labels = Object.keys(occupancy).filter(k => k !== 'RoadSegmentDescription');
-          const dataPoints = labels.map(label => Number((occupancy[label] as string).replace('%', '')) / 100);
-
-          new Chart(ctx, {
-            type: 'line',
-            data: {
-              labels,
-              datasets: [{
-                label: 'Occupancy',
-                data: dataPoints,
-                borderColor: 'rgba(54, 162, 235, 1)',
-                backgroundColor: 'rgba(54, 162, 235, 0.3)',
-              }]
-            },
-            options: {
-              responsive: false,
-              animation: false,
-              scales: {
-                x: {
-                  ticks: {
-                    minRotation: 90,  // no rotation to keep labels horizontal
-                    maxRotation: 90,  // no rotation to keep labels horizontal
-                    autoSkip: true,  // skip some labels if crowded
-                    maxTicksLimit: 12 // limit number of x labels shown
-                  }
-                },
-                y: {
-                  beginAtZero: true
-                }
-              },
-              plugins: {
-                legend: { display: false }
-              }
-            }
-          });
-        });
-      });
-    })
-    .catch(err => console.error(err));
-
-    // Two layer groups
-    let overviewLayer = L.layerGroup().addTo(map); // for bay center points
-    let detailLayer = L.layerGroup();              // for individual spots
-
-    fetch(`${API_BASE_URL}/api/live`)
-    .then((res) => res.json())
-    .then((data) => {
-      data.data.forEach((parking:LiveParking)=>{
-        const point = L.circle([parking.latitude,parking.longitude], {
-          radius: 1,
-          // should do data preprocessing beforehand...
-          color: parking.status_description === "Present"? "green" : "red",
-          fillOpacity: 0.8
-
-        }).addTo(detailLayer);
-        point.on('click', () => {
-          L.popup()
-            .setLatLng([parking.latitude,parking.longitude])
-            .setContent(
-              `<div>
-                <strong>Last updated:</strong> ${parking.status_timestamp}<br>
-              </div>`
-            )
-            .openOn(map);
-        });
-      })
-    })
-    .catch((err) => console.error(err));
-
-    let ModeControl = L.Control.extend({
-    options: { position: 'topright' },
-    onAdd: function(map:any) {
-      let container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-      container.innerHTML = 'Overview';
-
-
-      let currentMode = 'overview';
-      // Prevent click from affecting the map
-      L.DomEvent.disableClickPropagation(container);
-      L.DomEvent.disableScrollPropagation(container);
-
-      container.onclick = function() {
-        if (currentMode === 'overview') {
-          map.removeLayer(overviewLayer);
-          map.addLayer(detailLayer);
-          currentMode = 'detail';
-          container.innerHTML = 'Detail';
-        } else {
-          map.removeLayer(detailLayer);
-          map.addLayer(overviewLayer);
-          currentMode = 'overview';
-          container.innerHTML = 'Overview';
-        }
-      };
-
-      return container;
-    }
-  });
-  // Add the control to the map
-  map.addControl(new ModeControl());
-  }
-}, []);
 
   return (
     <HomeContainer>
@@ -952,7 +1068,21 @@ const HomePage = () => {
               </SearchButton>
             </SearchForm>
             {hasSearched && (
-              <ParkingResults>
+              <>
+                {lastSearchUpdate && (
+                  <div style={{
+                    textAlign: 'center',
+                    color: '#4A5568',
+                    fontSize: '0.9rem',
+                    marginBottom: '1rem',
+                    padding: '0.5rem',
+                    backgroundColor: '#F7FAFC',
+                    borderRadius: '0.5rem'
+                  }}>
+                    🔄 Search results last updated: {lastSearchUpdate.toLocaleTimeString()}
+                  </div>
+                )}
+                <ParkingResults>
                 {parkingResults.length > 0 ? (
                   parkingResults.slice(0, 5).map((spot) => (
                     <ParkingCard key={spot.id} onClick={()=>{
@@ -1002,6 +1132,7 @@ const HomePage = () => {
                   </div>
                 )}
               </ParkingResults>
+              </>
             )}
           </SearchMain>
         </Container>
@@ -1067,9 +1198,19 @@ const HomePage = () => {
 
       <ContentSection>
         <Container>
-          {!isLoadingStats && homeStats && (
+          {!isLoadingStats && (
             <DataInfo>
-              🔄 Data updated every 10 minutes | Last updated: {new Date(homeStats.lastUpdated).toLocaleTimeString()}
+              <div>
+                🔄 Data updated every 10 minutes | 
+                {homeStats && ` Stats: ${new Date(homeStats.lastUpdated).toLocaleTimeString()}`}
+                {lastMapUpdate && ` | Map: ${lastMapUpdate.toLocaleTimeString()}`}
+              </div>
+              <RefreshButton 
+                onClick={refreshAllData}
+                disabled={isMapLoading}
+              >
+                {isMapLoading ? 'Refreshing...' : 'Refresh All Data'}
+              </RefreshButton>
             </DataInfo>
           )}
 

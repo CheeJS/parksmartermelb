@@ -386,19 +386,19 @@ app.get('/api/home-stats', async (req, res) => {
   try {
     const connection = await pool.getConnection();
     
-    // Get total available parking spots
+    // Get total available parking spots from live data
     const [availableSpots] = await connection.query(
-      'SELECT SUM(available_parks) as total_available FROM available_parking WHERE available_parks > 0'
+      'SELECT SUM(available_parks) as total_available FROM available_parking_live WHERE available_parks > 0'
     );
     
-    // Get total parking locations
+    // Get total parking locations from live data
     const [totalLocations] = await connection.query(
-      'SELECT COUNT(*) as total_locations FROM available_parking'
+      'SELECT COUNT(*) as total_locations FROM available_parking_live'
     );
     
-    // Get locations with available spots
+    // Get locations with available spots from live data
     const [locationsWithSpots] = await connection.query(
-      'SELECT COUNT(*) as locations_with_spots FROM available_parking WHERE available_parks > 0'
+      'SELECT COUNT(*) as locations_with_spots FROM available_parking_live WHERE available_parks > 0'
     );
     
     // Get total transport stops
@@ -978,28 +978,31 @@ app.get('/api/car-ownership-analysis', async (req, res) => {
 });
 
 // API routes will be added here
-// Test database connection endpoint
+// Get live parking data endpoint
 app.get('/api/parking', async (req, res) => {
   try {
     // Get a connection from the pool
     const connection = await pool.getConnection();
     
-    // Query the available_parking table
-    const [rows] = await connection.query('SELECT * FROM available_parking');
+    // Query the available_parking_live table for real-time data
+    const [rows] = await connection.query('SELECT * FROM available_parking_live');
     
     // Release the connection back to the pool
     connection.release();
     
+    console.log(`🅿️ Retrieved ${rows.length} live parking records`);
+    
     res.json({
       status: 'success',
-      message: 'Database query successful',
-      data: rows
+      message: 'Live parking data retrieved successfully',
+      data: rows,
+      lastUpdated: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Database connection error:', error);
+    console.error('❌ Error fetching live parking data:', error);
     res.status(500).json({
       status: 'error',
-      message: 'Database connection failed',
+      message: 'Failed to fetch live parking data',
       error: error.message
     });
   }
