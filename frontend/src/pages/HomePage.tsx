@@ -544,10 +544,10 @@ interface Parking {
 }
 
 interface LiveParking {
-  Status_Timestamp:string,
-  Status_Description:string,
-  Latitude:number,
-  Longitude:number
+  status_timestamp:string,
+  status_description:string,
+  latitude:number,
+  longitude:number
 }
 
 interface Occupancy {
@@ -816,19 +816,19 @@ const HomePage = () => {
     .then((res) => res.json())
     .then((data) => {
       data.data.forEach((parking:LiveParking)=>{
-        const point = L.circle([parking.Latitude,parking.Longitude], {
+        const point = L.circle([parking.latitude,parking.longitude], {
           radius: 1,
           // should do data preprocessing beforehand...
-          color: parking.Status_Description === "Present"? "green" : "red",
+          color: parking.status_description === "Present"? "green" : "red",
           fillOpacity: 0.8
 
         }).addTo(detailLayer);
         point.on('click', () => {
           L.popup()
-            .setLatLng([parking.Latitude,parking.Longitude])
+            .setLatLng([parking.latitude,parking.longitude])
             .setContent(
               `<div>
-                <strong>Last updated:</strong> ${parking.Status_Timestamp}<br>
+                <strong>Last updated:</strong> ${parking.status_timestamp}<br>
               </div>`
             )
             .openOn(map);

@@ -993,7 +993,7 @@ app.get('/api/live', async (req, res) => {
     const connection = await pool.getConnection();
     
     // Query the available_parking table
-    const [rows] = await connection.query('SELECT * FROM bay_sensors_test');
+    const [rows] = await connection.query('SELECT * FROM bay_sensors_api');
     
     // Release the connection back to the pool
     connection.release();
