@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import HomePage from './pages/HomePage';
-
 import HistoricalTrends from './pages/HistoricalTrends';
 import EnvironmentalImpact from './pages/EnvironmentalImpact';
 import AboutUs from './pages/AboutUs';
@@ -77,8 +76,7 @@ function App() {
             </Logo>
             <NavLinks>
               <NavLink to="/">Home</NavLink>
-
-              <NavLink to="/trends">Historical Trends</NavLink>
+              <NavLink to="/ownership">Historical Trends</NavLink>
               <NavLink to="/impact">Environmental Impact</NavLink>
               <NavLink to="/about">About Us</NavLink>
             </NavLinks>
@@ -87,8 +85,7 @@ function App() {
         <MainContent>
           <Routes>
             <Route path="/" element={<HomePage />} />
-
-            <Route path="/trends" element={<HistoricalTrends />} />
+            <Route path="/ownership" element={<HistoricalTrends />} />
             <Route path="/impact" element={<EnvironmentalImpact />} />
             <Route path="/about" element={<AboutUs />} />
           </Routes>

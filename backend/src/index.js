@@ -552,6 +552,411 @@ app.get('/api/top-parking', async (req, res) => {
   }
 });
 
+// Car Ownership Analysis API endpoints
+// Simple test endpoint to verify basic functionality
+app.get('/api/simple-test', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    // Get just a few rows from each table to see what we're working with
+    const [popTest] = await connection.query('SELECT * FROM population LIMIT 3');
+    const [vehicleTest] = await connection.query('SELECT * FROM vehicle_census LIMIT 3');
+    
+    connection.release();
+    
+    // Create simple mock calculation for testing
+    const mockAnalysis = {
+      populationData: [
+        { year: 2019, population: 5000000 },
+        { year: 2020, population: 5100000 },
+        { year: 2021, population: 5200000 }
+      ],
+      vehicleData: [
+        { year: 2019, registrations: 3800000 },
+        { year: 2020, registrations: 3900000 },
+        { year: 2021, registrations: 4000000 }
+      ],
+      ownershipRates: [
+        { year: 2019, rate: 760.0, population: 5000000, vehicles: 3800000 },
+        { year: 2020, rate: 764.7, population: 5100000, vehicles: 3900000 },
+        { year: 2021, rate: 769.2, population: 5200000, vehicles: 4000000 }
+      ],
+      metrics: {
+        currentRate: 769.2,
+        growthRate: 1.2,
+        totalVehicles: 4000000,
+        projectedImpact: 884.6
+      },
+      rawData: {
+        populationSample: popTest,
+        vehicleSample: vehicleTest
+      }
+    };
+    
+    res.json({
+      status: 'success',
+      data: mockAnalysis
+    });
+
+  } catch (error) {
+    console.error('❌ Error in simple test:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
+  }
+});
+
+// Test data retrieval with simplified queries
+app.get('/api/test-data-retrieval', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    console.log('🧪 Testing data retrieval with various approaches...');
+    
+    // Try different approaches for population data
+    console.log('📊 Testing population data queries...');
+    
+    // Approach 1: Basic query
+    const [pop1] = await connection.query('SELECT * FROM population LIMIT 5');
+    console.log('Population approach 1 (basic):', pop1);
+    
+    // Approach 2: Try with backticks
+    const [pop2] = await connection.query('SELECT `year`, `victoria` FROM population LIMIT 5');
+    console.log('Population approach 2 (with backticks):', pop2);
+    
+    // Approach 3: Check for case sensitivity
+    try {
+      const [pop3] = await connection.query('SELECT year, Victoria FROM population LIMIT 5');
+      console.log('Population approach 3 (Victoria case):', pop3);
+    } catch (e) {
+      console.log('Population approach 3 failed:', e.message);
+    }
+    
+    // Try different approaches for vehicle data
+    console.log('🚗 Testing vehicle data queries...');
+    
+    // Approach 1: Basic query
+    const [veh1] = await connection.query('SELECT * FROM vehicle_census LIMIT 5');
+    console.log('Vehicle approach 1 (basic):', veh1);
+    
+    // Approach 2: Try with backticks
+    try {
+      const [veh2] = await connection.query('SELECT `myunknowncolumn`, `1` FROM vehicle_census LIMIT 5');
+      console.log('Vehicle approach 2 (with backticks):', veh2);
+    } catch (e) {
+      console.log('Vehicle approach 2 failed:', e.message);
+    }
+    
+    connection.release();
+    
+    res.json({
+      status: 'success',
+      data: {
+        populationTests: {
+          basic: pop1,
+          withBackticks: pop2
+        },
+        vehicleTests: {
+          basic: veh1
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error testing data retrieval:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
+  }
+});
+
+// Debug raw data endpoint
+app.get('/api/debug-data', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    // Get raw population data
+    const [rawPopulation] = await connection.query('SELECT * FROM population LIMIT 10');
+    
+    // Get raw vehicle data
+    const [rawVehicle] = await connection.query('SELECT * FROM vehicle_census LIMIT 10');
+    
+    // Try different column names for population
+    const [popColumns] = await connection.query('SHOW COLUMNS FROM population');
+    const [vehicleColumns] = await connection.query('SHOW COLUMNS FROM vehicle_census');
+    
+    connection.release();
+    
+    console.log('🔍 Raw population data:', rawPopulation);
+    console.log('🔍 Raw vehicle data:', rawVehicle);
+    console.log('📊 Population columns:', popColumns);
+    console.log('🚗 Vehicle columns:', vehicleColumns);
+    
+    res.json({
+      status: 'success',
+      data: {
+        rawPopulation,
+        rawVehicle,
+        populationColumns: popColumns,
+        vehicleColumns: vehicleColumns
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error debugging data:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
+  }
+});
+
+// Check table structures endpoint
+app.get('/api/check-tables', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    // Check population table structure
+    const [popColumns] = await connection.query('DESCRIBE population');
+    
+    // Check vehicle_census table structure  
+    const [vehicleColumns] = await connection.query('DESCRIBE vehicle_census');
+    
+    // Get sample data from both tables
+    const [popSample] = await connection.query('SELECT * FROM population ORDER BY year LIMIT 5');
+    const [vehicleSample] = await connection.query('SELECT * FROM vehicle_census LIMIT 10');
+    
+    // Get all column names for population table
+    const [popColumnNames] = await connection.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'population' 
+      ORDER BY ORDINAL_POSITION
+    `);
+    
+    // Get all column names for vehicle_census table
+    const [vehicleColumnNames] = await connection.query(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'vehicle_census' 
+      ORDER BY ORDINAL_POSITION
+    `);
+    
+    connection.release();
+    
+    console.log('📊 Population table columns:', popColumnNames.map(c => c.COLUMN_NAME));
+    console.log('🚗 Vehicle census table columns:', vehicleColumnNames.map(c => c.COLUMN_NAME));
+    console.log('📊 Population sample data:', popSample);
+    console.log('🚗 Vehicle sample data:', vehicleSample);
+    
+    res.json({
+      status: 'success',
+      data: {
+        population: {
+          columns: popColumns,
+          columnNames: popColumnNames.map(c => c.COLUMN_NAME),
+          sample: popSample,
+          totalRows: popSample.length
+        },
+        vehicle_census: {
+          columns: vehicleColumns,
+          columnNames: vehicleColumnNames.map(c => c.COLUMN_NAME),
+          sample: vehicleSample,
+          totalRows: vehicleSample.length
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error checking tables:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
+  }
+});
+
+// Population data endpoint
+app.get('/api/population', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    // Query the population table - use Victoria column for Melbourne data
+    const [populationData] = await connection.query(`
+      SELECT \`year\`, \`victoria\` as population 
+      FROM population 
+      WHERE \`year\` IS NOT NULL 
+      AND \`victoria\` IS NOT NULL 
+      AND \`year\` != 'year'
+      AND \`victoria\` != 'victoria'
+      AND \`year\` REGEXP '^[0-9]{4}$'
+      ORDER BY CAST(\`year\` as UNSIGNED) ASC
+    `);
+    
+    // Convert string values to numbers
+    const processedData = populationData.map(row => ({
+      year: parseInt(row.year),
+      population: parseInt(row.population.toString().replace(/,/g, '')) // Remove commas if present
+    })).filter(row => !isNaN(row.year) && !isNaN(row.population));
+    
+    connection.release();
+    
+    console.log(`📊 Retrieved ${processedData.length} Victoria population records`);
+    console.log('📊 Sample data:', processedData.slice(0, 3));
+    
+    res.json({
+      status: 'success',
+      data: processedData
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching population data:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
+  }
+});
+
+// Vehicle census data endpoint
+app.get('/api/vehicle-census', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    // Query the vehicle_census table - skip header row and use column "1" for registrations
+    const [vehicleData] = await connection.query(`
+      SELECT \`myunknowncolumn\` as year, \`1\` as registrations 
+      FROM vehicle_census 
+      WHERE \`myunknowncolumn\` != 'myunknowncolumn' 
+      AND \`myunknowncolumn\` IS NOT NULL 
+      AND \`1\` IS NOT NULL
+      AND \`myunknowncolumn\` REGEXP '^[0-9]{4}$'
+      AND \`1\` REGEXP '^[0-9]+$'
+      ORDER BY CAST(\`myunknowncolumn\` as UNSIGNED) ASC
+    `);
+    
+    // Convert string values to numbers
+    const processedData = vehicleData.map(row => ({
+      year: parseInt(row.year),
+      registrations: parseInt(row.registrations.toString().replace(/,/g, '')) // Remove commas if present
+    })).filter(row => !isNaN(row.year) && !isNaN(row.registrations));
+    
+    connection.release();
+    
+    console.log(`🚗 Retrieved ${processedData.length} vehicle census records`);
+    console.log('🚗 Sample data:', processedData.slice(0, 3));
+    
+    res.json({
+      status: 'success',
+      data: processedData
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching vehicle census data:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
+  }
+});
+
+// Simplified car ownership rate calculation
+app.get('/api/car-ownership-analysis', async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    console.log('🔄 Calculating car ownership rates...');
+    
+    // Get population data - try Victoria column
+    const [popData] = await connection.query(`
+      SELECT \`year\`, \`victoria\` as population 
+      FROM population 
+      WHERE \`year\` IS NOT NULL AND \`victoria\` IS NOT NULL
+      ORDER BY CAST(\`year\` as UNSIGNED) ASC
+    `);
+    
+    // Get vehicle data - use the specified column names
+    const [vehData] = await connection.query(`
+      SELECT \`myunknowncolumn\` as year, \`1\` as registrations 
+      FROM vehicle_census 
+      WHERE \`myunknowncolumn\` IS NOT NULL AND \`1\` IS NOT NULL
+      AND \`myunknowncolumn\` REGEXP '^[0-9]{4}$'
+      ORDER BY CAST(\`myunknowncolumn\` as UNSIGNED) ASC
+    `);
+    
+    connection.release();
+    
+    // Clean and process the data
+    const populationData = popData.map(row => ({
+      year: parseInt(row.year),
+      population: parseInt(row.population?.toString().replace(/,/g, ''))
+    })).filter(row => !isNaN(row.year) && !isNaN(row.population));
+    
+    const vehicleData = vehData.map(row => ({
+      year: parseInt(row.year),
+      registrations: parseInt(row.registrations?.toString().replace(/,/g, ''))
+    })).filter(row => !isNaN(row.year) && !isNaN(row.registrations));
+    
+    console.log(`📊 Population data: ${populationData.length} records`);
+    console.log(`🚗 Vehicle data: ${vehicleData.length} records`);
+    
+    // Calculate ownership rates for overlapping years
+    const ownershipRates = [];
+    
+    // Calculate ownership rates: (vehicles / population) × 1000
+    vehicleData.forEach(vehicleYear => {
+      const populationYear = populationData.find(pop => pop.year === vehicleYear.year);
+      
+      if (populationYear) {
+        const rate = (vehicleYear.registrations / populationYear.population) * 1000;
+        
+        console.log(`📈 ${vehicleYear.year}: ${vehicleYear.registrations.toLocaleString()} vehicles ÷ ${populationYear.population.toLocaleString()} population = ${rate.toFixed(1)} per 1,000`);
+        
+        ownershipRates.push({
+          year: vehicleYear.year,
+          rate: Math.round(rate * 10) / 10,
+          population: populationYear.population,
+          vehicles: vehicleYear.registrations
+        });
+      }
+    });
+    
+    console.log(`📈 Calculated ${ownershipRates.length} ownership rates`);
+    
+    // Simple metrics
+    const metrics = ownershipRates.length > 0 ? {
+      currentRate: ownershipRates[ownershipRates.length - 1].rate,
+      growthRate: 0,
+      totalVehicles: ownershipRates[ownershipRates.length - 1].vehicles,
+      projectedImpact: 0
+    } : {
+      currentRate: 0,
+      growthRate: 0,
+      totalVehicles: 0,
+      projectedImpact: 0
+    };
+    
+    res.json({
+      status: 'success',
+      data: {
+        populationData,
+        vehicleData,
+        ownershipRates,
+        metrics
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching car ownership analysis:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
+  }
+});
+
 // API routes will be added here
 // Test database connection endpoint
 app.get('/api/parking', async (req, res) => {
