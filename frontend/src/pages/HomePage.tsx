@@ -1089,7 +1089,7 @@ const HomePage = () => {
       <ContentSection>
         <Container>
           <FeaturesGrid>
-        <FeatureCard to="/parking">
+        <FeatureCard to="/">
           <FeatureTitle>
             <span role="img" aria-label="parking">🅿️</span> Live Parking Data
           </FeatureTitle>
@@ -1098,7 +1098,7 @@ const HomePage = () => {
           </FeatureDescription>
         </FeatureCard>
 
-        <FeatureCard to="/plan">
+        <FeatureCard to="/">
           <FeatureTitle>
             <span role="img" aria-label="leaf">🌱</span> Smart Parking Recommendations
           </FeatureTitle>

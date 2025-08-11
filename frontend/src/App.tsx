@@ -76,7 +76,7 @@ function App() {
             </Logo>
             <NavLinks>
               <NavLink to="/">Home</NavLink>
-              <NavLink to="/ownership">Historical Trends</NavLink>
+              <NavLink to="/trends">Historical Trends</NavLink>
               <NavLink to="/impact">Environmental Impact</NavLink>
               <NavLink to="/about">About Us</NavLink>
             </NavLinks>
@@ -85,7 +85,7 @@ function App() {
         <MainContent>
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/ownership" element={<HistoricalTrends />} />
+            <Route path="/trends" element={<HistoricalTrends />} />
             <Route path="/impact" element={<EnvironmentalImpact />} />
             <Route path="/about" element={<AboutUs />} />
           </Routes>
