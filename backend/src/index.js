@@ -20,9 +20,27 @@ const dbConfig = {
 // Create database connection pool
 const pool = mysql.createPool(dbConfig);
 
-// Middleware
-app.use(cors());
+// Middleware - Simplified CORS configuration
+const corsOptions = {
+  origin: '*', // Allow all origins for now
+  credentials: false, // Set to false when using wildcard origin
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Length', 'X-Requested-With'],
+  optionsSuccessStatus: 200 // Support legacy browsers
+};
+
+// Add logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - Origin: ${req.get('origin')}`);
+  next();
+});
+
+app.use(cors(corsOptions));
 app.use(express.json());
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
 
 // Basic route
 app.get('/', (req, res) => {

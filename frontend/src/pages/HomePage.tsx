@@ -6,7 +6,7 @@ import { Chart } from 'chart.js';
 import '../styles/Map.css';
 
 // API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api.parksmartermelb.me';
 
 const MapControls = styled.div`
   display: flex;
