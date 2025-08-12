@@ -261,6 +261,31 @@ const RefreshButton = styled.button`
   }
 `;
 
+const MapsIcon = styled.button`
+  background: #2B5797;
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-weight: 500;
+  
+  &:hover {
+    background: #1A365D;
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 const TransportBreakdown = styled.div`
   background: white;
   border-radius: 1rem;
@@ -417,9 +442,10 @@ const ParkingCard = styled.div`
 
 const ParkingHeader = styled.div`
   display: flex;
-  justify-content: between;
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 1rem;
+  gap: 0.5rem;
 `;
 
 const ParkingName = styled.h3`
@@ -487,19 +513,21 @@ const SidebarSubtitle = styled.p`
 `;
 
 const TopSpotCard = styled.div`
-  background: linear-gradient(135deg, #F0FFF4 0%, #C6F6D5 100%);
+  background: #E6FFFA;
   border: 1px solid #9AE6B4;
-  border-radius: 1rem;
-  padding: 1.5rem;
+  border-radius: 0.5rem;
+  padding: 1rem;
   margin-bottom: 1rem;
+  cursor: pointer;
 `;
 
 const SpotCard = styled.div`
   background: #F8F9FA;
   border: 1px solid #E2E8F0;
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
   padding: 1rem;
   margin-bottom: 1rem;
+  cursor: pointer;
 
   &:last-child {
     margin-bottom: 0;
@@ -519,6 +547,7 @@ const SpotDetails = styled.div`
   align-items: center;
   font-size: 0.85rem;
   color: #4A5568;
+  gap: 0.5rem;
 `;
 
 const HighlightBadge = styled.span`
@@ -683,6 +712,13 @@ const HomePage = () => {
             <h4>${p.RoadSegmentDescription}</h4>
             <div><strong>Available Parks:</strong> ${p.available_parks}</div>
             <div><strong>Restriction:</strong> ${p.Restriction_Days} ${p.Restriction_Start} - ${p.Restriction_End}</div>
+            <div style="margin-top: 10px;">
+              <a href="https://www.google.com/maps/search/?api=1&query=${p.Latitude},${p.Longitude}" 
+                 target="_blank" 
+                 style="display: inline-flex; align-items: center; gap: 5px; background: #2C5282; color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">
+                🗺️ Open in Maps
+              </a>
+            </div>
             ${occupancyChartHTML}
           </div>
         `;
@@ -751,6 +787,13 @@ const HomePage = () => {
             .setContent(
               `<div>
                 <strong>Last updated:</strong> ${parking.status_timestamp}<br>
+                <div style="margin-top: 10px;">
+                  <a href="https://www.google.com/maps/search/?api=1&query=${parking.latitude},${parking.longitude}" 
+                     target="_blank" 
+                     style="display: inline-flex; align-items: center; gap: 5px; background: #2C5282; color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">
+                    🗺️ Open in Maps
+                  </a>
+                </div>
               </div>`
             )
             .openOn((mapContainer as any).leafletMap);
@@ -926,41 +969,53 @@ const HomePage = () => {
     await searchParkingForLocation(destinationLocation);
   };
 
+  // Function to open location in maps
+  const openInMaps = (latitude: string | number, longitude: string | number, name: string) => {
+    const lat = parseFloat(latitude.toString());
+    const lng = parseFloat(longitude.toString());
+    
+    // Create a universal maps URL that works across devices
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    
+    // Open in new tab/window
+    window.open(mapsUrl, '_blank');
+  };
+
   // Initialize map once
   useEffect(() => {
-    const mapContainer = document.getElementById('map');
+  const mapContainer = document.getElementById('map');
 
-    // Check if the map is already initialized
-    if (mapContainer && !(mapContainer as any)._leaflet_id) {
-      const L = (window as any).L;
+  // Check if the map is already initialized
+  if (mapContainer && !(mapContainer as any)._leaflet_id) {
+    const L = (window as any).L;
 
-      // Default fallback location
-      const defaultLatLng = [-37.8136, 144.9631];
+    // Default fallback location
+    const defaultLatLng = [-37.8136, 144.9631];
 
-      // Initialize map
-      const map = L.map('map').setView(defaultLatLng, 13);
+    // Initialize map
+    const map = L.map('map').setView(defaultLatLng, 13);
 
       // Store map instance for later access
-      (mapContainer as any).leafletMap = map;
+    (mapContainer as any).leafletMap = map;
 
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
-      }).addTo(map);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+    }).addTo(map);
 
-      // Try to get user geolocation
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-            map.setView([lat, lng], 15);
-            L.marker([lat, lng]).addTo(map).bindPopup('You are here').openPopup();
-          },
-          (error) => {
-            console.error('Geolocation error:', error);
-          }
-        );
-      }
+    // Try to get user geolocation
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          map.setView([lat, lng], 15);
+          L.marker([lat, lng]).addTo(map).bindPopup('You are here').openPopup();
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+        }
+      );
+    }
 
       // Initialize layer groups
       const overviewLayer = L.layerGroup().addTo(map);
@@ -992,8 +1047,8 @@ const HomePage = () => {
               transition: all 0.2s ease;
             " onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.3)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)'">
               Overview Mode
-            </div>
-          `;
+          </div>
+        `;
 
           // Prevent click from affecting the map
           L.DomEvent.disableClickPropagation(container);
@@ -1043,7 +1098,7 @@ const HomePage = () => {
       // Add legend control with dynamic content
       let LegendControl = L.Control.extend({
         options: { position: 'bottomleft' },
-        onAdd: function(map:any) {
+    onAdd: function(map:any) {
           let container = L.DomUtil.create('div', 'leaflet-control leaflet-control-legend');
           
           // Function to update legend content based on mode
@@ -1105,16 +1160,16 @@ const HomePage = () => {
           // Store reference for updating
           (container as any).updateContent = updateLegendContent;
 
-          // Prevent click from affecting the map
-          L.DomEvent.disableClickPropagation(container);
-          L.DomEvent.disableScrollPropagation(container);
+      // Prevent click from affecting the map
+      L.DomEvent.disableClickPropagation(container);
+      L.DomEvent.disableScrollPropagation(container);
 
-          return container;
-        }
-      });
+      return container;
+    }
+  });
       
       const legendControlInstance = new LegendControl();
-      map.addControl(new ModeControl());
+  map.addControl(new ModeControl());
       map.addControl(legendControlInstance);
       
       // Store legend control reference for access from mode control
@@ -1209,9 +1264,15 @@ const HomePage = () => {
                     }}>
                       <ParkingHeader>
                         <ParkingName>{spot.name}</ParkingName>
-                        <AvailabilityBadge available={spot.availableSpots > 0}>
-                          {spot.availableSpots > 0 ? 'Available' : 'Not Available'}
-                        </AvailabilityBadge>
+                        <MapsIcon 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click
+                            openInMaps(spot.latitude, spot.longitude, spot.name);
+                          }}
+                          title="Open in Map"
+                        >
+                          Open in Map
+                        </MapsIcon>
                       </ParkingHeader>
                       <ParkingInfo>
                         <InfoItem>
@@ -1255,9 +1316,9 @@ const HomePage = () => {
       </SearchSection>
 
       <ContentSection>
-                 <Container>
-           <MapContainer>
-             <MapWrapper>
+        <Container>
+          <MapContainer>
+            <MapWrapper>
                <div style={{ 
                  background: 'linear-gradient(135deg, #F0FFF4 0%, #E6FFFA 100%)', 
                  padding: '12px 16px', 
@@ -1274,7 +1335,7 @@ const HomePage = () => {
                  <span><strong>Interactive Map:</strong> Click blue circles for parking details • Use toggle button to view individual sensors</span>
                </div>
                <div id="map" style={{ height: '700px', width: '100%', borderRadius: '0 0 1rem 1rem' }}></div>
-             </MapWrapper>
+            </MapWrapper>
             <MapSidebar>
               <SidebarTitle>
                 🏆 Highest Availability
@@ -1293,8 +1354,19 @@ const HomePage = () => {
                     }}>
                     <SpotName>{topParkingSpots[0]?.name}</SpotName>
                     <SpotDetails>
-                      <span><strong>{topParkingSpots[0]?.availableSpots}</strong> spots available</span>
-                      <HighlightBadge>Highest</HighlightBadge>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span><strong>{topParkingSpots[0]?.availableSpots}</strong> spots available</span>
+                        <HighlightBadge>Highest</HighlightBadge>
+                      </div>
+                      <MapsIcon 
+                        onClick={(e) => {
+                          e.stopPropagation(); // Prevent card click
+                          openInMaps(topParkingSpots[0].latitude, topParkingSpots[0].longitude, topParkingSpots[0].name);
+                        }}
+                        title="Open in Map"
+                      >
+                        Open in Map
+                      </MapsIcon>
                     </SpotDetails>
                   </TopSpotCard>
 
@@ -1307,8 +1379,26 @@ const HomePage = () => {
                     }}>
                       <SpotName>{spot.name}</SpotName>
                       <SpotDetails>
-                        <span><strong>{spot.availableSpots}</strong> spots available</span>
-                        <span>#{index + 2}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span><strong>{spot.availableSpots}</strong> spots available</span>
+                          <span style={{ 
+                            background: '#E2E8F0', 
+                            color: '#4A5568',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '0.25rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 600
+                          }}>#{index + 2}</span>
+                        </div>
+                        <MapsIcon 
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent card click
+                            openInMaps(spot.latitude, spot.longitude, spot.name);
+                          }}
+                          title="Open in Map"
+                        >
+                          Open in Map
+                        </MapsIcon>
                       </SpotDetails>
                     </SpotCard>
                   ))}

@@ -533,6 +533,31 @@ const AvailabilityBadge = styled.span<{ available: boolean }>`
   text-transform: uppercase;
 `;
 
+const MapsIcon = styled.button`
+  background: #2B5797;
+  color: white;
+  border: none;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.25rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  font-weight: 500;
+  
+  &:hover {
+    background: #1A365D;
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+`;
+
 const ParkingInfo = styled.div`
   display: flex;
   flex-direction: column;
@@ -598,6 +623,18 @@ const EnvironmentalImpact = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [distance, setDistance] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
+  
+  // Function to open location in maps
+  const openInMaps = (latitude: string | number, longitude: string | number, name: string) => {
+    const lat = parseFloat(latitude.toString());
+    const lng = parseFloat(longitude.toString());
+    
+    // Create a universal maps URL that works across devices
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    
+    // Open in new tab/window
+    window.open(mapsUrl, '_blank');
+  };
   const [routeError, setRouteError] = useState<string>('');
   const [parkingRecommendations, setParkingRecommendations] = useState<ParkingRecommendation[]>([]);
   const [isLoadingParking, setIsLoadingParking] = useState(false);
@@ -1081,9 +1118,15 @@ const EnvironmentalImpact = () => {
                 <ParkingSpotCard key={spot.id}>
                   <ParkingHeader>
                     <ParkingName>{spot.name}</ParkingName>
-                    <AvailabilityBadge available={(spot.availableSpots || 0) > 0}>
-                      {(spot.availableSpots || 0) > 0 ? 'Available' : 'Not Available'}
-                    </AvailabilityBadge>
+                    <MapsIcon 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openInMaps(spot.lat, spot.lng, spot.name);
+                      }}
+                      title="Open in Map"
+                    >
+                      Open in Map
+                    </MapsIcon>
                   </ParkingHeader>
                   
                   <ParkingInfo>
