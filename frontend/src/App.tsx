@@ -71,7 +71,6 @@ function App() {
         <NavBar>
           <NavContainer>
             <Logo to="/">
-              <span role="img" aria-label="parking"></span>
               ParkSmarter Melbourne
             </Logo>
             <NavLinks>
