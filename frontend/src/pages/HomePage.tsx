@@ -708,7 +708,7 @@ const HomePage = () => {
           : '<div>No occupancy data available</div>';
 
         const popupContent = `
-          ${occupancy? `<div style="width: 500px; height: 350px;">` : `<div style="width: 250px; height: 100px;">`}
+          ${occupancy? `<div style="width: 500px; height: 400px;">` : `<div style="width: 250px; height: 150px;">`}
             <h4>${p.RoadSegmentDescription}</h4>
             <div><strong>Available Parks:</strong> ${p.available_parks}</div>
             <div><strong>Restriction:</strong> ${p.Restriction_Days} ${p.Restriction_Start} - ${p.Restriction_End}</div>
@@ -1258,7 +1258,7 @@ const HomePage = () => {
                   parkingResults.slice(0, 5).map((spot) => (
                     <ParkingCard key={spot.id} onClick={()=>{
                         const mapContainer = document.getElementById('map');
-                        window.scrollTo({top:1600, behavior:'smooth'})
+                        window.scrollTo({top:(65 / 100) * (document.documentElement.scrollHeight - window.innerHeight), behavior:'smooth'})
                         const map = (mapContainer as any).leafletMap;
                         map.setView([parseFloat(spot.latitude),parseFloat(spot.longitude)], 17)
                     }}>
@@ -1348,7 +1348,7 @@ const HomePage = () => {
                 <>
                   <TopSpotCard onClick={()=>{
                         const mapContainer = document.getElementById('map');
-                        window.scrollTo({top:950, behavior:'smooth'})
+                        window.scrollTo({top:(50 / 100) * (document.documentElement.scrollHeight - window.innerHeight), behavior:'smooth'})
                         const map = (mapContainer as any).leafletMap;
                         map.setView([topParkingSpots[0].latitude,topParkingSpots[0].longitude], 17)
                     }}>
@@ -1373,7 +1373,7 @@ const HomePage = () => {
                   {topParkingSpots.slice(1, 5).map((spot, index) => (
                     <SpotCard key={spot.id} onClick={()=>{
                         const mapContainer = document.getElementById('map');
-                        window.scrollTo({top:950, behavior:'smooth'})
+                        window.scrollTo({top:(55 / 100) * (document.documentElement.scrollHeight - window.innerHeight), behavior:'smooth'})
                         const map = (mapContainer as any).leafletMap;
                         map.setView([spot.latitude,spot.longitude], 17)
                     }}>
