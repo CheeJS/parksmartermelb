@@ -95,9 +95,8 @@ export const calculateRoute = async (
     origin: createLocationPayload(origin),
     destination: createLocationPayload(destination),
     travelMode,
-    routingPreference: 'TRAFFIC_AWARE',
     computeAlternativeRoutes: false,
-    routeModifiers: {
+    routeModifiers: travelMode === 'TRANSIT' ? undefined : {
       avoidTolls: false,
       avoidHighways: false,
       avoidFerries: false
@@ -107,6 +106,12 @@ export const calculateRoute = async (
   };
 
   try {
+    console.log(`🚀 Calculating route for ${travelMode}:`, {
+      origin: requestBody.origin,
+      destination: requestBody.destination,
+      travelMode
+    });
+
     const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
       method: 'POST',
       headers: {
@@ -118,15 +123,19 @@ export const calculateRoute = async (
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`❌ HTTP error for ${travelMode}:`, response.status, errorText);
+      throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
     }
 
     const data: RouteResponse = await response.json();
+    console.log(`✅ Received response for ${travelMode}:`, data);
 
     if (!data.routes || data.routes.length === 0) {
+      console.warn(`⚠️ No routes found for ${travelMode}`);
       return {
         success: false,
-        error: 'No routes found'
+        error: `No routes found for ${travelMode}`
       };
     }
 

@@ -623,6 +623,13 @@ const EnvironmentalImpact = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [distance, setDistance] = useState<string>('');
   const [duration, setDuration] = useState<string>('');
+  const [travelTimes, setTravelTimes] = useState<Record<TravelMode, string>>({
+    'DRIVE': '',
+    'TRANSIT': '',
+    'TWO_WHEELER': '',
+    'BICYCLE': '',
+    'WALK': ''
+  });
   
   // Function to open location in maps
   const openInMaps = (latitude: string | number, longitude: string | number, name: string) => {
@@ -652,6 +659,18 @@ const EnvironmentalImpact = () => {
       description: 'Travel by passenger car'
     },
     {
+      mode: 'TRANSIT' as TravelMode,
+      title: 'Public',
+      icon: '🚌',
+      description: 'Travel by public transit routes, where available'
+    },
+    {
+      mode: 'TWO_WHEELER' as TravelMode,
+      title: 'Motor',
+      icon: '🏍️',
+      description: 'Two-wheeled, motorized vehicle. For example, motorcycle'
+    },
+    {
       mode: 'BICYCLE' as TravelMode,
       title: 'Bicycle',
       icon: '🚴',
@@ -662,18 +681,6 @@ const EnvironmentalImpact = () => {
       title: 'Walk',
       icon: '🚶',
       description: 'Travel by walking'
-    },
-    {
-      mode: 'TWO_WHEELER' as TravelMode,
-      title: 'Motorcycle',
-      icon: '🏍️',
-      description: 'Two-wheeled, motorized vehicle. For example, motorcycle'
-    },
-    {
-      mode: 'TRANSIT' as TravelMode,
-      title: 'Public Transit',
-      icon: '🚌',
-      description: 'Travel by public transit routes, where available'
     }
   ];
 
@@ -829,22 +836,79 @@ const EnvironmentalImpact = () => {
     setRouteError('');
     
     try {
-      const result = await calculateRoute(
-        startLocation,
-        endLocation,
-        'DRIVE' // Default to driving for distance calculation
-      );
+      // Calculate routes for specific travel modes (Motor uses Drive travel time)
+      const routePromises = travelModes
+        .filter(mode => mode.mode !== 'TWO_WHEELER') // Skip TWO_WHEELER, we'll use Drive time for Motor
+        .map(async (mode) => {
+          try {
+            console.log(`🔄 Starting calculation for ${mode.title} (${mode.mode})`);
+            const result = await calculateRoute(
+              startLocation,
+              endLocation,
+              mode.mode
+            );
+            console.log(`✅ Completed calculation for ${mode.title}:`, result);
+            return {
+              mode: mode.mode,
+              result: result
+            };
+          } catch (error) {
+            console.error(`❌ Error calculating route for ${mode.title} (${mode.mode}):`, error);
+            return {
+              mode: mode.mode,
+              result: { 
+                success: false, 
+                error: `Failed to calculate ${mode.title} route: ${error instanceof Error ? error.message : 'Unknown error'}`
+              }
+            };
+          }
+        });
 
-      if (result.success && result.distance && result.duration) {
-        setDistance(result.distance.kilometers);
-        setDuration(result.duration.text);
+      const routeResults = await Promise.all(routePromises);
+      console.log('📊 All route results:', routeResults);
+      
+      // Use driving route for distance (most reliable)
+      const driveResult = routeResults.find(r => r.mode === 'DRIVE')?.result;
+      
+      if (driveResult?.success && driveResult.distance && driveResult.duration) {
+        setDistance(driveResult.distance.kilometers);
+        setDuration(driveResult.duration.text);
+        
+        // Set travel times for each mode
+        const newTravelTimes: Record<TravelMode, string> = {
+          'DRIVE': '',
+          'TRANSIT': '',
+          'TWO_WHEELER': '',
+          'BICYCLE': '',
+          'WALK': ''
+        };
+        
+        routeResults.forEach(({ mode, result }) => {
+          if (result.success && result.duration) {
+            newTravelTimes[mode] = result.duration.text;
+            console.log(`✅ Set travel time for ${mode}: ${result.duration.text}`);
+          } else {
+            newTravelTimes[mode] = 'N/A';
+            console.warn(`⚠️ No travel time for ${mode}:`, result.error);
+          }
+        });
+        
+        // Use Drive travel time for Motor (TWO_WHEELER)
+        if (driveResult.success && driveResult.duration) {
+          newTravelTimes['TWO_WHEELER'] = driveResult.duration.text;
+          console.log(`✅ Set Motor travel time (using Drive time): ${driveResult.duration.text}`);
+        }
+        
+        console.log('🕐 Final travel times:', newTravelTimes);
+        setTravelTimes(newTravelTimes);
         setIsCalculated(true);
       } else {
-        setRouteError(result.error || 'Failed to calculate route');
+        console.error('❌ Drive result failed:', driveResult);
+        setRouteError(driveResult?.error || 'Failed to calculate route');
       }
     } catch (error) {
-      console.error('Error calculating route:', error);
-      setRouteError('Network error occurred while calculating route');
+      console.error('Error calculating routes:', error);
+      setRouteError('Network error occurred while calculating routes');
     } finally {
       setIsCalculating(false);
     }
@@ -965,10 +1029,10 @@ const EnvironmentalImpact = () => {
           {isCalculating ? (
             <>
               <LoadingSpinner />
-              Calculating Route...
+              Calculating Routes & Emissions...
             </>
           ) : (
-            'Calculate Carbon Emissions'
+            'Calculate Travel Times & Emissions'
           )}
         </CalculateButton>
         
@@ -1007,6 +1071,7 @@ const EnvironmentalImpact = () => {
             <ResultsGrid>
               {travelModes.map((mode) => {
                 const emission = getEmissionData(mode.mode);
+                const travelTime = travelTimes[mode.mode];
                 
                 return (
                   <ResultCard key={mode.mode}>
@@ -1018,6 +1083,19 @@ const EnvironmentalImpact = () => {
                     <div style={{ fontSize: '0.85rem', color: emission.color, fontWeight: '600' }}>
                       {emission.rating}
                     </div>
+                    {travelTime && (
+                      <div style={{ 
+                        fontSize: '0.9rem', 
+                        color: '#2D3748', 
+                        fontWeight: '600',
+                        marginTop: '0.5rem',
+                        padding: '0.25rem 0.5rem',
+                        background: '#EDF2F7',
+                        borderRadius: '0.25rem'
+                      }}>
+                        🕐 {travelTime}
+                      </div>
+                    )}
                     {emission.rawValue && emission.rawValue > 0 && (
                       <EmissionDetails>
                         <div>📊 {emission.perKm?.toFixed(3)} kg CO₂/km</div>
@@ -1072,6 +1150,17 @@ const EnvironmentalImpact = () => {
                   </ResultEmission>
                   <div style={{ fontSize: '0.85rem', color: '#A0AEC0', fontWeight: '600' }}>
                     Awaiting calculation
+                  </div>
+                  <div style={{ 
+                    fontSize: '0.9rem', 
+                    color: '#A0AEC0', 
+                    fontWeight: '600',
+                    marginTop: '0.5rem',
+                    padding: '0.25rem 0.5rem',
+                    background: '#F7FAFC',
+                    borderRadius: '0.25rem'
+                  }}>
+                    🕐 -- min
                   </div>
                   <ResultDescription style={{ marginTop: '0.75rem' }}>
                     {mode.description}
@@ -1164,17 +1253,17 @@ const EnvironmentalImpact = () => {
                     
                     <InfoRow>
                       <ParkingPrice>{spot.price}</ParkingPrice>
-                      {spot.walkToNearestTransit <= 250 ? (
+                      {spot.nearbyStops.length > 0 && spot.walkToNearestTransit <= 250 ? (
                         <GreenBadge>
                           🌱 Eco-Friendly
                         </GreenBadge>
-                      ) : spot.walkToNearestTransit <= 500 ? (
+                      ) : spot.nearbyStops.length > 0 && spot.walkToNearestTransit <= 500 ? (
                         <YellowBadge>
-                          ⚠️ Moderate Walk
+                          ⚠️ Near Transit
                         </YellowBadge>
                       ) : (
                         <RedBadge>
-                          🚶 Long Walk
+                          🚶 No Nearby Transit
                         </RedBadge>
                       )}
                     </InfoRow>
@@ -1189,7 +1278,7 @@ const EnvironmentalImpact = () => {
                 marginTop: '1rem',
                 fontStyle: 'italic'
               }}>
-                {parkingRecommendations.filter(p => p.walkToNearestTransit <= 250).length} eco-friendly spots within 250m of transit
+                {parkingRecommendations.filter(p => p.nearbyStops.length > 0 && p.walkToNearestTransit <= 250).length} eco-friendly spots with nearby transit
               </div>
             </>
           ) : endLocation ? (
