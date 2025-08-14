@@ -8,43 +8,6 @@ import '../styles/Map.css';
 // API configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
 
-const MapControls = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-`;
-
-const Select = styled.select`
-  padding: 0.5rem 1rem;
-  border: 1px solid #E2E8F0;
-  border-radius: 0.5rem;
-  background-color: white;
-  color: #4A5568;
-  font-size: 1rem;
-  cursor: pointer;
-
-  &:focus {
-    outline: none;
-    border-color: #2C5282;
-  }
-`;
-
-const FilterButton = styled.button<{ active: boolean }>`
-  padding: 0.5rem 1rem;
-  border: 1px solid ${props => props.active ? '#48BB78' : '#E2E8F0'};
-  border-radius: 0.5rem;
-  background-color: ${props => props.active ? '#F0FFF4' : 'white'};
-  color: ${props => props.active ? '#2F855A' : '#4A5568'};
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: ${props => props.active ? '#F0FFF4' : '#F7FAFC'};
-  }
-`;
-
 const StatsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -79,7 +42,7 @@ const HomeContainer = styled.div`
 const Hero = styled.section`
   background: linear-gradient(135deg, #2C5282 0%, #48BB78 100%);
   color: white;
-  padding: 6rem 0;
+  padding: 3rem 0;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -142,21 +105,6 @@ const HeroLogo = styled.img`
 const ContentSection = styled.section`
   padding: 2rem 0;
   background: white;
-`;
-
-const MapSection = styled.div`
-  background: white;
-  border-radius: 1.5rem;
-  padding: 2rem;
-  margin-bottom: 2rem;
-  height: 650px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid #E2E8F0;
-  
-  #map {
-    border-radius: 1rem;
-    overflow: hidden;
-  }
 `;
 
 const MapContainer = styled.div`
@@ -261,6 +209,29 @@ const RefreshButton = styled.button`
   }
 `;
 
+const ClearHighlightButton = styled.button`
+  background: #E53E3E;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: #C53030;
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
 const MapsIcon = styled.button`
   background: #2B5797;
   color: white;
@@ -332,18 +303,6 @@ const TransportCount = styled.div`
 const SearchSection = styled.section`
   background: linear-gradient(135deg, #F7FAFC 0%, #EDF2F7 100%);
   padding: 3rem 0;
-`;
-
-const SearchContainer = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 400px;
-  gap: 3rem;
-  align-items: start;
-  
-  @media (max-width: 1024px) {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
 `;
 
 const SearchMain = styled.div`
@@ -456,15 +415,6 @@ const ParkingName = styled.h3`
   margin: 0;
 `;
 
-const AvailabilityBadge = styled.span<{ available: boolean }>`
-  background: ${props => props.available ? '#C6F6D5' : '#FEB2B2'};
-  color: ${props => props.available ? '#2F855A' : '#C53030'};
-  padding: 0.25rem 0.75rem;
-  border-radius: 1rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-`;
-
 const ParkingInfo = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -484,17 +434,6 @@ const InfoItem = styled.div`
 `;
 
 // Sidebar Components
-const Sidebar = styled.div`
-  background: white;
-  border-radius: 1.5rem;
-  padding: 2rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid #E2E8F0;
-  height: fit-content;
-  position: sticky;
-  top: 2rem;
-`;
-
 const SidebarTitle = styled.h3`
   color: #2D3748;
   font-size: 1.3rem;
@@ -616,8 +555,6 @@ interface Occupancy {
 }
 
 const HomePage = () => {
-  const [showEcoSpots, setShowEcoSpots] = useState(false);
-  const [showAccessible, setShowAccessible] = useState(false);
   const [homeStats, setHomeStats] = useState<HomeStats | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   
@@ -634,9 +571,12 @@ const HomePage = () => {
   // Add state for last map update and loading state
   const [lastMapUpdate, setLastMapUpdate] = useState<Date | null>(null);
   const [isMapLoading, setIsMapLoading] = useState(false);
+  
+  // Add state for highlighted parking spot
+  const [highlightedParkingName, setHighlightedParkingName] = useState<string | null>(null);
 
   // Google Maps setup
-  const { isLoaded, loadError } = useLoadScript({
+  const { isLoaded } = useLoadScript({
     googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
     libraries: ['places']
   });
@@ -670,21 +610,24 @@ const HomePage = () => {
       detailLayer.clearLayers();
 
       // Fetch fresh data
-      const [parkingResponse, occupancyResponse, liveResponse] = await Promise.all([
+      const [parkingResponse, occupancyResponse, liveResponse, offStreetResponse] = await Promise.all([
         fetch(`${API_BASE_URL}/api/parking`),
         fetch(`${API_BASE_URL}/api/occupancy`),
-        fetch(`${API_BASE_URL}/api/live`)
+        fetch(`${API_BASE_URL}/api/live`),
+        fetch(`${API_BASE_URL}/api/off-street`)
       ]);
 
-      const [parkingData, occupancyData, liveData] = await Promise.all([
+      const [parkingData, occupancyData, liveData, offStreetData] = await Promise.all([
         parkingResponse.json(),
         occupancyResponse.json(),
-        liveResponse.json()
+        liveResponse.json(),
+        offStreetResponse.json()
       ]);
 
       const parkingArray: Parking[] = parkingData.data;
       const occupancyArray: Occupancy[] = occupancyData.data;
       const liveArray: LiveParking[] = liveData.data;
+      const offStreetArray = offStreetData.data;
 
       // Create a lookup map for occupancy
       const occupancyMap = new Map<string, Occupancy>();
@@ -800,6 +743,39 @@ const HomePage = () => {
         });
       });
 
+      // Add off-street parking data as red circles
+      console.log('🏢 Adding off-street parking locations:', offStreetArray.length);
+      offStreetArray.forEach((offStreet: any) => {
+        const redCircle = L.circle([offStreet.latitude, offStreet.longitude], {
+          color: 'red',
+          fillColor: '#ff0000',
+          fillOpacity: 0.6,
+          radius: 20,
+        }).addTo(overviewLayer);
+
+        const popupContent = `
+          <div style="width: 300px; max-width: 300px;">
+            <h4 style="margin: 0 0 10px 0; color: #C53030;">🏢 Off-Street Parking</h4>
+            <div><strong>Address:</strong> ${offStreet.building_address}</div>
+            <div style="margin: 10px 0;">
+              <strong>Early Bird:</strong> 
+              <span style="color: ${offStreet.early_bird && offStreet.early_bird !== 'No early bird offer available' ? '#2F855A' : '#C53030'};">
+                ${offStreet.early_bird || 'No early bird offer available'}
+              </span>
+            </div>
+            <div style="margin-top: 15px;">
+              <a href="https://www.google.com/maps/search/?api=1&query=${offStreet.latitude},${offStreet.longitude}" 
+                 target="_blank" 
+                 style="display: inline-flex; align-items: center; gap: 5px; background: #C53030; color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">
+                🗺️ Open in Maps
+              </a>
+            </div>
+          </div>
+        `;
+
+        redCircle.bindPopup(popupContent, {maxWidth: 320, minWidth: 300});
+      });
+
       setLastMapUpdate(new Date());
       console.log('✅ Map data refreshed successfully');
 
@@ -815,6 +791,72 @@ const HomePage = () => {
     console.log('🔍 Searching parking for:', location.address, 'at coordinates:', location.lat, location.lng);
     setIsSearching(true);
     setHasSearched(true);
+    
+    // Add destination marker to map
+    const mapContainer = document.getElementById('map');
+    if (mapContainer && (mapContainer as any).leafletMap) {
+      const L = (window as any).L;
+      const map = (mapContainer as any).leafletMap;
+      
+      // Remove existing destination marker if it exists
+      if ((mapContainer as any).destinationMarker) {
+        map.removeLayer((mapContainer as any).destinationMarker);
+      }
+      
+      // Create custom destination marker with better styling
+      const destinationIcon = L.divIcon({
+        html: `
+          <div style="
+            background: #2C5282;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <div style="
+              color: white;
+              font-size: 12px;
+              font-weight: bold;
+            ">📍</div>
+          </div>
+        `,
+        className: 'destination-marker',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -15]
+      });
+      
+      // Add destination marker
+      const destinationMarker = L.marker([location.lat, location.lng], { 
+        icon: destinationIcon,
+        zIndexOffset: 1000 // Ensure it appears on top
+      }).addTo(map);
+      
+      // Add popup to destination marker
+      destinationMarker.bindPopup(`
+        <div style="text-align: center; min-width: 200px;">
+          <h4 style="margin: 0 0 10px 0; color: #2C5282;">🎯 Your Destination</h4>
+          <div style="margin-bottom: 10px; color: #4A5568; font-weight: 500;">${location.address}</div>
+          <div style="margin-top: 15px;">
+            <a href="https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}" 
+               target="_blank" 
+               style="display: inline-flex; align-items: center; gap: 5px; background: linear-gradient(135deg, #2C5282 0%, #48BB78 100%); color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500;">
+              🗺️ Open in Maps
+            </a>
+          </div>
+        </div>
+      `, {maxWidth: 250});
+      
+      // Store reference for later removal
+      (mapContainer as any).destinationMarker = destinationMarker;
+      
+      // Center map on destination with appropriate zoom
+      map.setView([location.lat, location.lng], 15);
+    }
     
     try {
       const requestBody = {
@@ -853,83 +895,6 @@ const HomePage = () => {
     }
   }, []); // Empty dependency array since it doesn't depend on any state
 
-  // Master refresh function to update all data
-  const refreshAllData = useCallback(async () => {
-    console.log('🔄 Refreshing all data...');
-    
-    // Refresh home stats
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/home-stats`);
-      if (response.ok) {
-        const result = await response.json();
-        setHomeStats(result.data);
-      }
-    } catch (error) {
-      console.error('Error refreshing home stats:', error);
-    }
-    
-    // Refresh top parking spots
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/top-parking`);
-      if (response.ok) {
-        const result = await response.json();
-        setTopParkingSpots(result.data);
-      }
-    } catch (error) {
-      console.error('Error refreshing top parking spots:', error);
-    }
-    
-    // Refresh map data
-    await loadMapData();
-    
-    // Refresh search results if user has searched
-    if (destinationLocation && hasSearched) {
-      await searchParkingForLocation(destinationLocation);
-    }
-    
-    console.log('✅ All data refreshed successfully');
-  }, [destinationLocation, hasSearched, loadMapData, searchParkingForLocation]);
-
-  // Initial data load and setup master refresh interval
-  useEffect(() => {
-    const loadInitialData = async () => {
-      // Load initial stats
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/home-stats`);
-        if (response.ok) {
-          const result = await response.json();
-          setHomeStats(result.data);
-        }
-      } catch (error) {
-        console.error('Error fetching initial home stats:', error);
-      } finally {
-        setIsLoadingStats(false);
-      }
-
-      // Load initial top parking spots
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/top-parking`);
-        if (response.ok) {
-          const result = await response.json();
-          setTopParkingSpots(result.data);
-        }
-      } catch (error) {
-        console.error('Error fetching initial top parking spots:', error);
-      }
-    };
-    
-    // Load initial data
-    loadInitialData();
-    
-    // Set up single master refresh interval for all data
-    const masterInterval = setInterval(() => {
-      console.log('🕐 Master refresh timer triggered');
-      refreshAllData();
-    }, 10 * 60 * 1000);
-    
-    return () => clearInterval(masterInterval);
-  }, [refreshAllData]);
-
   // Autocomplete callbacks
   const onDestinationLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
     setDestinationAutocomplete(autocomplete);
@@ -949,8 +914,7 @@ const HomePage = () => {
         setDestinationLocation(newLocation);
         setDestinationInputValue(newLocation.address);
         
-        // Automatically search for parking when destination is selected
-        searchParkingForLocation(newLocation);
+        // Don't automatically search - wait for user to click Find Parking button
       } else {
         console.log('❌ No geometry/location found in place');
       }
@@ -1009,7 +973,35 @@ const HomePage = () => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           map.setView([lat, lng], 15);
-          L.marker([lat, lng]).addTo(map).bindPopup('You are here').openPopup();
+          
+          // Create custom "You are here" marker
+          const userLocationIcon = L.divIcon({
+            html: `
+              <div style="
+                background: #48BB78;
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                border: 2px solid white;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">
+                <div style="
+                  color: white;
+                  font-size: 12px;
+                  font-weight: bold;
+                ">📍</div>
+              </div>
+            `,
+            className: 'user-location-marker',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+            popupAnchor: [0, -15]
+          });
+          
+          L.marker([lat, lng], { icon: userLocationIcon }).addTo(map).bindPopup('You are here').openPopup();
         },
         (error) => {
           console.error('Geolocation error:', error);
@@ -1118,8 +1110,13 @@ const HomePage = () => {
                   <h4 style="margin: 0 0 8px 0; color: #2C5282; font-size: 14px; font-weight: 600;">Map Legend - Overview</h4>
                   <div style="display: flex; align-items: center; margin: 4px 0;">
                     <div style="width: 16px; height: 16px; background: #30f; border-radius: 50%; margin-right: 8px; opacity: 0.7;"></div>
-                    <span style="color: #4A5568;">Parking Areas (Click for details & occupancy chart)</span>
+                    <span style="color: #4A5568;">Street Parking Areas (Click for details & occupancy chart)</span>
                   </div>
+                  <div style="display: flex; align-items: center; margin: 4px 0;">
+                    <div style="width: 16px; height: 16px; background: #ff0000; border-radius: 50%; margin-right: 8px; opacity: 0.7;"></div>
+                    <span style="color: #4A5568;">Off-Street Parking Buildings (Click for details)</span>
+                  </div>
+
                   <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E2E8F0; color: #718096; font-size: 11px;">
                     💡 Switch to Individual Parks mode to see sensor details
                   </div>
@@ -1145,6 +1142,14 @@ const HomePage = () => {
                   <div style="display: flex; align-items: center; margin: 4px 0;">
                     <div style="width: 8px; height: 8px; background: red; border-radius: 50%; margin-right: 12px;"></div>
                     <span style="color: #4A5568;">Occupied Parking Space</span>
+                  </div>
+                  <div style="display: flex; align-items: center; margin: 4px 0;">
+                    <div style="width: 12px; height: 12px; background: #48BB78; border-radius: 50%; margin-right: 12px; border: 1px solid white;"></div>
+                    <span style="color: #4A5568;">Your Current Location</span>
+                  </div>
+                  <div style="display: flex; align-items: center; margin: 4px 0;">
+                    <div style="width: 12px; height: 12px; background: #2C5282; border-radius: 50%; margin-right: 12px; border: 1px solid white;"></div>
+                    <span style="color: #4A5568;">Your Destination</span>
                   </div>
                   <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E2E8F0; color: #718096; font-size: 11px;">
                     💡 Click individual dots to see last update time
@@ -1178,7 +1183,7 @@ const HomePage = () => {
   // Load initial map data on first render
   loadMapData();
   }
-}, []);
+}, [loadMapData]);
 
   // Format distance helper function
   const formatDistance = (meters: number): string => {
@@ -1187,6 +1192,150 @@ const HomePage = () => {
     }
     return `${(meters / 1000).toFixed(1)}km`;
   };
+
+  // Function to highlight a parking spot on the map
+  const highlightParkingSpot = useCallback((spotName: string, latitude: number, longitude: number) => {
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer || !(mapContainer as any).leafletMap) return;
+
+    const L = (window as any).L;
+    const overviewLayer = (mapContainer as any).overviewLayer;
+    
+    // Clear any existing highlight
+    clearParkingHighlight();
+    
+    // Find and highlight the parking spot
+    overviewLayer.eachLayer((layer: any) => {
+      if (layer instanceof L.Circle) {
+        const layerLatLng = layer.getLatLng();
+        // Check if this circle matches our target location (with small tolerance for floating point)
+        if (Math.abs(layerLatLng.lat - latitude) < 0.0001 && 
+            Math.abs(layerLatLng.lng - longitude) < 0.0001) {
+          
+          // Store original style for restoration
+          const originalStyle = {
+            color: layer.options.color,
+            fillColor: layer.options.fillColor,
+            fillOpacity: layer.options.fillOpacity,
+            radius: layer.options.radius
+          };
+          (layer as any)._originalStyle = originalStyle;
+          
+          // Apply highlight style
+          layer.setStyle({
+            color: '#10B981',
+            fillColor: '#10B981',
+            fillOpacity: 0.6,
+            radius: 25
+          });
+          
+          // Store reference for clearing later
+          (mapContainer as any).highlightedCircle = layer;
+          setHighlightedParkingName(spotName);
+          
+          return false; // Break the loop
+        }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Function to clear parking highlight
+  const clearParkingHighlight = useCallback(() => {
+    const mapContainer = document.getElementById('map');
+    if (!mapContainer) return;
+
+    const highlightedCircle = (mapContainer as any).highlightedCircle;
+    if (highlightedCircle && (highlightedCircle as any)._originalStyle) {
+      // Restore original style
+      highlightedCircle.setStyle((highlightedCircle as any)._originalStyle);
+      delete (highlightedCircle as any)._originalStyle;
+    }
+    
+    // Clear references
+    (mapContainer as any).highlightedCircle = null;
+    setHighlightedParkingName(null);
+  }, []);
+
+  // Master refresh function to update all data
+  const refreshAllData = useCallback(async () => {
+    console.log('🔄 Refreshing all data...');
+    
+    // Clear any existing highlights since we're refreshing the map
+    clearParkingHighlight();
+    
+    // Refresh home stats
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/home-stats`);
+      if (response.ok) {
+        const result = await response.json();
+        setHomeStats(result.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing home stats:', error);
+    }
+    
+    // Refresh top parking spots
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/top-parking`);
+      if (response.ok) {
+        const result = await response.json();
+        setTopParkingSpots(result.data);
+      }
+    } catch (error) {
+      console.error('Error refreshing top parking spots:', error);
+    }
+    
+    // Refresh map data
+    await loadMapData();
+    
+    // Refresh search results if user has searched
+    if (destinationLocation && hasSearched) {
+      await searchParkingForLocation(destinationLocation);
+    }
+    
+    console.log('✅ All data refreshed successfully');
+  }, [destinationLocation, hasSearched, loadMapData, searchParkingForLocation, clearParkingHighlight]);
+
+  // Initial data load and setup master refresh interval
+  useEffect(() => {
+    const loadInitialData = async () => {
+      // Load initial stats
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/home-stats`);
+        if (response.ok) {
+          const result = await response.json();
+          setHomeStats(result.data);
+        }
+      } catch (error) {
+        console.error('Error fetching initial home stats:', error);
+      } finally {
+        setIsLoadingStats(false);
+      }
+
+      // Load initial top parking spots
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/top-parking`);
+        if (response.ok) {
+          const result = await response.json();
+          setTopParkingSpots(result.data);
+        }
+      } catch (error) {
+        console.error('Error fetching initial top parking spots:', error);
+      }
+    };
+    
+    // Load initial data
+    loadInitialData();
+    
+    // Set up single master refresh interval for all data
+    const masterInterval = setInterval(() => {
+      console.log('🕐 Master refresh timer triggered');
+      refreshAllData();
+    }, 10 * 60 * 1000); // 10 minutes
+    
+    return () => clearInterval(masterInterval);
+  }, [refreshAllData]);
 
   return (
     <HomeContainer>
@@ -1207,7 +1356,7 @@ const HomePage = () => {
           <SearchMain>
             <SearchTitle>🔍 Find Parking Near Your Destination</SearchTitle>
             <SearchSubtitle>
-              Enter your destination to find available parking spots with real-time data from Melbourne's parking network.
+              Enter your destination to find available parking spots with real-time data from Melbourne's parking network. Results are sorted by distance from your destination.
             </SearchSubtitle>
             
             <SearchForm>
@@ -1255,12 +1404,15 @@ const HomePage = () => {
                 )}
               <ParkingResults>
                 {parkingResults.length > 0 ? (
-                  parkingResults.slice(0, 5).map((spot) => (
+                  parkingResults.slice(0, 8).map((spot) => (
                     <ParkingCard key={spot.id} onClick={()=>{
                         const mapContainer = document.getElementById('map');
                         window.scrollTo({top:(65 / 100) * (document.documentElement.scrollHeight - window.innerHeight), behavior:'smooth'})
                         const map = (mapContainer as any).leafletMap;
-                        map.setView([parseFloat(spot.latitude),parseFloat(spot.longitude)], 17)
+                        map.setView([parseFloat(spot.latitude),parseFloat(spot.longitude)], 17);
+                        
+                        // Highlight the parking spot
+                        highlightParkingSpot(spot.name, parseFloat(spot.latitude), parseFloat(spot.longitude));
                     }}>
                       <ParkingHeader>
                         <ParkingName>{spot.name}</ParkingName>
@@ -1277,7 +1429,7 @@ const HomePage = () => {
                       <ParkingInfo>
                         <InfoItem>
                           <span>📍</span>
-                          <span>{formatDistance(spot.distanceFromDestination)} away</span>
+                          <span style={{ fontWeight: 'bold', color: '#2C5282' }}>{formatDistance(spot.distanceFromDestination)} away</span>
                         </InfoItem>
                         <InfoItem>
                           <span>🅿️</span>
@@ -1334,7 +1486,7 @@ const HomePage = () => {
                  <span>🗺️</span>
                  <span><strong>Interactive Map:</strong> Click blue circles for parking details • Use toggle button to view individual sensors</span>
                </div>
-               <div id="map" style={{ height: '700px', width: '100%', borderRadius: '0 0 1rem 1rem' }}></div>
+               <div id="map" style={{ height: '900px', width: '100%', borderRadius: '0 0 1rem 1rem' }}></div>
             </MapWrapper>
             <MapSidebar>
               <SidebarTitle>
@@ -1350,7 +1502,10 @@ const HomePage = () => {
                         const mapContainer = document.getElementById('map');
                         window.scrollTo({top:(50 / 100) * (document.documentElement.scrollHeight - window.innerHeight), behavior:'smooth'})
                         const map = (mapContainer as any).leafletMap;
-                        map.setView([topParkingSpots[0].latitude,topParkingSpots[0].longitude], 17)
+                        map.setView([topParkingSpots[0].latitude,topParkingSpots[0].longitude], 17);
+                        
+                        // Highlight the parking spot
+                        highlightParkingSpot(topParkingSpots[0].name, topParkingSpots[0].latitude, topParkingSpots[0].longitude);
                     }}>
                     <SpotName>{topParkingSpots[0]?.name}</SpotName>
                     <SpotDetails>
@@ -1375,7 +1530,10 @@ const HomePage = () => {
                         const mapContainer = document.getElementById('map');
                         window.scrollTo({top:(55 / 100) * (document.documentElement.scrollHeight - window.innerHeight), behavior:'smooth'})
                         const map = (mapContainer as any).leafletMap;
-                        map.setView([spot.latitude,spot.longitude], 17)
+                        map.setView([spot.latitude,spot.longitude], 17);
+                        
+                        // Highlight the parking spot
+                        highlightParkingSpot(spot.name, spot.latitude, spot.longitude);
                     }}>
                       <SpotName>{spot.name}</SpotName>
                       <SpotDetails>
@@ -1425,13 +1583,31 @@ const HomePage = () => {
                 🔄 Data updated every 10 minutes | 
                 {homeStats && ` Stats: ${new Date(homeStats.lastUpdated).toLocaleTimeString()}`}
                 {lastMapUpdate && ` | Map: ${lastMapUpdate.toLocaleTimeString()}`}
+                {highlightedParkingName && (
+                  <>
+                    <br />
+                    <span style={{ color: '#10B981', fontWeight: 'bold' }}>
+                      📍 Highlighted: {highlightedParkingName}
+                    </span>
+                  </>
+                )}
               </div>
-              <RefreshButton 
-                onClick={refreshAllData}
-                disabled={isMapLoading}
-              >
-                {isMapLoading ? 'Refreshing...' : 'Refresh All Data'}
-              </RefreshButton>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <RefreshButton 
+                  onClick={refreshAllData}
+                  disabled={isMapLoading}
+                >
+                  {isMapLoading ? 'Refreshing...' : 'Refresh All Data'}
+                </RefreshButton>
+                {highlightedParkingName && (
+                  <ClearHighlightButton 
+                    onClick={clearParkingHighlight}
+                    title="Clear highlighted parking spot"
+                  >
+                    Clear Highlight
+                  </ClearHighlightButton>
+                )}
+              </div>
             </DataInfo>
           )}
 
@@ -1464,7 +1640,7 @@ const HomePage = () => {
 
           {!isLoadingStats && homeStats?.transportTypes && homeStats.transportTypes.length > 0 && (
             <TransportBreakdown>
-              <TransportTitle>🚌 Public Transport Network</TransportTitle>
+              <TransportTitle>🚌 Public Transport Network (Within 10km of CBD)</TransportTitle>
               <TransportGrid>
                 {homeStats.transportTypes.map(transport => (
                   <TransportItem key={transport.transport_type}>

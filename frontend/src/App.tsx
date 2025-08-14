@@ -1,10 +1,10 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import HomePage from './pages/HomePage';
 import HistoricalTrends from './pages/HistoricalTrends';
 import EnvironmentalImpact from './pages/EnvironmentalImpact';
 import AboutUs from './pages/AboutUs';
+import NotFound from './pages/NotFound';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -22,7 +22,7 @@ const NavBar = styled.nav`
 `;
 
 const NavContainer = styled.div`
-  max-width: 1200px;
+  max-width: 2200px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -61,7 +61,7 @@ const NavLink = styled(Link)`
 `;
 
 const MainContent = styled.main`
-  padding-top: 4rem;
+  padding-top: 1rem;
 `;
 
 function App() {
@@ -87,6 +87,7 @@ function App() {
             <Route path="/trends" element={<HistoricalTrends />} />
             <Route path="/impact" element={<EnvironmentalImpact />} />
             <Route path="/about" element={<AboutUs />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </MainContent>
       </AppContainer>

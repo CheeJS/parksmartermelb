@@ -72,36 +72,6 @@ const Description = styled.p`
   }
 `;
 
-const StatsRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 2rem;
-  margin-top: 3rem;
-`;
-
-const StatCard = styled.div`
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1rem;
-  padding: 1.5rem;
-  text-align: center;
-`;
-
-const StatNumber = styled.div`
-  font-size: 2.5rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-  color: #48BB78;
-`;
-
-const StatLabel = styled.div`
-  font-size: 0.9rem;
-  opacity: 0.9;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
 const ContentWrapper = styled.div`
   max-width: 1200px;
   margin: 0 auto;
@@ -152,12 +122,6 @@ const InfoText = styled.p`
   color: #4A5568;
   line-height: 1.6;
   font-size: 0.95rem;
-`;
-
-const CardTitle = styled.h3`
-  color: #2D3748;
-  margin-bottom: 1rem;
-  font-size: 1.25rem;
 `;
 
 const LocationSearchContainer = styled.div`
@@ -482,16 +446,6 @@ const Sidebar = styled.div`
   }
 `;
 
-const SidebarTitle = styled.h3`
-  color: #2D3748;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
 const ParkingSpotCard = styled.div`
   background: #F7FAFC;
   border: 1px solid #E2E8F0;
@@ -521,16 +475,6 @@ const ParkingName = styled.div`
   font-weight: 600;
   color: #2D3748;
   font-size: 0.95rem;
-`;
-
-const AvailabilityBadge = styled.span<{ available: boolean }>`
-  background: ${props => props.available ? '#C6F6D5' : '#FED7D7'};
-  color: ${props => props.available ? '#2F855A' : '#C53030'};
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
 `;
 
 const MapsIcon = styled.button`

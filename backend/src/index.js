@@ -467,20 +467,24 @@ app.post('/api/simple-parking-search', async (req, res) => {
         Restriction_Days,
         Restriction_Start,
         Restriction_End,
-        Restriction_Display
+        Restriction_Display,
+        SQRT(
+          POW(Latitude - ?, 2) + POW(Longitude - ?, 2)
+        ) as distance_calc
       FROM available_parking_live
       WHERE 
         ABS(Latitude - ?) <= ? 
         AND ABS(Longitude - ?) <= ?
+        AND available_parks > 0
       ORDER BY 
-        available_parks DESC,
-        (Latitude - ?) * (Latitude - ?) + (Longitude - ?) * (Longitude - ?)
+        distance_calc ASC,
+        available_parks DESC
       LIMIT 15
     `;
 
     const [parkingSpots] = await connection.query(parkingQuery, [
-      destinationLat, latDelta, destinationLng, lonDelta,
-      destinationLat, destinationLat, destinationLng, destinationLng
+      destinationLat, destinationLng,
+      destinationLat, latDelta, destinationLng, lonDelta
     ]);
 
     connection.release();
@@ -1055,6 +1059,47 @@ app.get('/api/occupancy', async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Database connection failed',
+      error: error.message
+    });
+  }
+});
+
+// Off-street parking data endpoint
+app.get('/api/off-street', async (req, res) => {
+  try {
+    console.log('🏢 Fetching off-street parking data...');
+    
+    // Get a connection from the pool
+    const connection = await pool.getConnection();
+    
+    // Query the off_street table
+    const [rows] = await connection.query(`
+      SELECT 
+        building_address,
+        longitude,
+        latitude,
+        location,
+        early_bird
+      FROM off_street
+      WHERE longitude IS NOT NULL AND latitude IS NOT NULL
+    `);
+    
+    console.log(`✅ Found ${rows.length} off-street parking locations`);
+    
+    // Release the connection back to the pool
+    connection.release();
+    
+    res.json({
+      status: 'success',
+      message: 'Off-street parking data retrieved successfully',
+      data: rows,
+      count: rows.length
+    });
+  } catch (error) {
+    console.error('❌ Error fetching off-street parking data:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch off-street parking data',
       error: error.message
     });
   }

@@ -9,7 +9,7 @@ const PageContainer = styled.div`
 const HeroSection = styled.section`
   background: linear-gradient(135deg, #2C5282 0%, #48BB78 100%);
   color: white;
-  padding: 6rem 2rem;
+  padding: 3rem 2rem;
   text-align: center;
   position: relative;
   overflow: hidden;
@@ -78,13 +78,9 @@ const ContentSection = styled.section`
   background: white;
 `;
 
-const Section = styled.section`
-  padding: 4rem 0;
-`;
-
 const SectionTitle = styled.h2`
   color: #2D3748;
-  margin-bottom: 3rem;
+  margin-bottom: 1rem;
   font-size: 2.5rem;
   text-align: center;
   font-weight: 700;
@@ -144,148 +140,12 @@ const CardContent = styled.p`
   font-size: 1.1rem;
 `;
 
-const TeamSection = styled.section`
-  background: linear-gradient(135deg, #F7FAFC 0%, #EDF2F7 100%);
-  padding: 5rem 0;
-`;
-
-const FeatureGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 2rem;
-  margin-top: 3rem;
-`;
-
-const FeatureCard = styled.div`
-  background: white;
-  border-radius: 1rem;
-  padding: 2rem;
-  text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease;
-  
-  &:hover {
-    transform: translateY(-4px);
-  }
-`;
-
-const FeatureIcon = styled.div`
-  font-size: 2.5rem;
-  margin-bottom: 1rem;
-`;
-
-const FeatureTitle = styled.h4`
-  color: #2D3748;
-  margin-bottom: 1rem;
-  font-size: 1.2rem;
-  font-weight: 600;
-`;
-
-const FeatureText = styled.p`
-  color: #4A5568;
-  line-height: 1.6;
-`;
-
 const ContactSection = styled.section`
   background: white;
-  padding: 0.1rem 0;
-`;
-
-const ContactForm = styled.form`
-  max-width: 700px;
-  margin: 0 auto;
-  background: white;
-  padding: 3rem;
-  border-radius: 1.5rem;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  border: 1px solid #E2E8F0;
-`;
-
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: 1.5rem;
-`;
-
-const Label = styled.label`
-  display: block;
-  margin-bottom: 0.75rem;
-  color: #2D3748;
-  font-weight: 600;
-  font-size: 1.1rem;
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: 1rem;
-  border: 2px solid #E2E8F0;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  box-sizing: border-box;
-
-  &:focus {
-    outline: none;
-    border-color: #2C5282;
-    box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1);
-  }
-`;
-
-const TextArea = styled.textarea`
-  width: 100%;
-  padding: 1rem;
-  border: 2px solid #E2E8F0;
-  border-radius: 0.75rem;
-  font-size: 1rem;
-  min-height: 150px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  box-sizing: border-box;
-  resize: vertical;
-
-  &:focus {
-    outline: none;
-    border-color: #2C5282;
-    box-shadow: 0 0 0 3px rgba(44, 82, 130, 0.1);
-  }
-`;
-
-const Button = styled.button`
-  background: linear-gradient(135deg, #2C5282 0%, #48BB78 100%);
-  color: white;
-  padding: 1rem 2.5rem;
-  border: none;
-  border-radius: 0.75rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  width: 100%;
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(44, 82, 130, 0.3);
-  }
-  
-  &:active {
-    transform: translateY(0);
-  }
+  padding: 0.5rem 0;
 `;
 
 const AboutUs = () => {
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-    alert('Thank you for your message! We\'ll get back to you soon.');
-  };
 
   return (
     <PageContainer>
@@ -296,7 +156,7 @@ const AboutUs = () => {
           </LogoContainer>
           <HeroTitle>Krusty Peak</HeroTitle>
           <HeroSubtitle>
-            Innovating Melbourne's parking experience through smart technology and sustainable solutions
+            Driving smarter, greener parking solutions for Melbourne’s future
           </HeroSubtitle>
         </Container>
       </HeroSection>
@@ -327,7 +187,7 @@ const AboutUs = () => {
               <CardIcon>💡</CardIcon>
               <CardTitle>Our Innovation</CardTitle>
               <CardContent>
-                Combining cutting-edge technology with real-world data to create intelligent parking solutions that 
+                Using real-world data to create intelligent parking solutions that 
                 benefit drivers, the environment, and the broader Melbourne community.
               </CardContent>
             </Card>
@@ -338,31 +198,151 @@ const AboutUs = () => {
       <ContactSection>
         <Container>
           <SectionTitle>Get In Touch</SectionTitle>
-          <ContactForm onSubmit={handleSubmit}>
-            <FormGrid>
-              <FormGroup>
-                <Label>Full Name</Label>
-                <Input type="text" placeholder="Enter your full name" required />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Email Address</Label>
-                <Input type="email" placeholder="your.email@example.com" required />
-              </FormGroup>
-            </FormGrid>
-
-            <FormGroup>
-              <Label>Subject</Label>
-              <Input type="text" placeholder="What's this about?" required />
-            </FormGroup>
-
-            <FormGroup>
-              <Label>Message</Label>
-              <TextArea placeholder="Tell us more about your inquiry, feedback, or how we can help you..." required />
-            </FormGroup>
-
-            <Button type="submit">Send Message</Button>
-          </ContactForm>
+          <div style={{ 
+            textAlign: 'center', 
+            maxWidth: '800px',
+            margin: '0 auto'
+          }}>
+            <p style={{ 
+              fontSize: '1.3rem', 
+              color: '#4A5568',
+              lineHeight: '1.8',
+              marginBottom: '3rem',
+              fontWeight: '400'
+            }}>
+              Have questions about our parking solutions? Want to share feedback or explore partnership opportunities? 
+              We'd love to hear from you!
+            </p>
+            
+            <div style={{
+              background: 'linear-gradient(135deg, #F0FFF4 0%, #E6FFFA 100%)',
+              padding: '4rem 3rem',
+              borderRadius: '2rem',
+              border: '1px solid #C6F6D5',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Decorative background elements */}
+              <div style={{
+                position: 'absolute',
+                top: '-50px',
+                right: '-50px',
+                width: '200px',
+                height: '200px',
+                background: 'linear-gradient(135deg, rgba(72, 187, 120, 0.1), rgba(44, 82, 130, 0.1))',
+                borderRadius: '50%',
+                pointerEvents: 'none'
+              }} />
+              <div style={{
+                position: 'absolute',
+                bottom: '-30px',
+                left: '-30px',
+                width: '150px',
+                height: '150px',
+                background: 'linear-gradient(135deg, rgba(44, 82, 130, 0.1), rgba(72, 187, 120, 0.1))',
+                borderRadius: '50%',
+                pointerEvents: 'none'
+              }} />
+              
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{
+                  fontSize: '3rem',
+                  marginBottom: '1.5rem'
+                }}>
+                  📧
+                </div>
+                
+                <h3 style={{ 
+                  color: '#2F855A',
+                  fontSize: '2rem',
+                  fontWeight: '700',
+                  marginBottom: '1rem',
+                  letterSpacing: '-0.02em'
+                }}>
+                  Contact Us
+                </h3>
+                
+                <p style={{
+                  color: '#2F855A',
+                  fontSize: '1.1rem',
+                  marginBottom: '2rem',
+                  opacity: 0.8
+                }}>
+                  Drop us a line and we'll get back to you as soon as possible
+                </p>
+                
+                <div style={{
+                  marginBottom: '2.5rem'
+                }}>
+                  <a 
+                    href="mailto:krustypeak@gmail.com" 
+                    style={{ 
+                      color: '#2C5282', 
+                      textDecoration: 'none',
+                      fontSize: '1.4rem',
+                      fontWeight: '700',
+                      letterSpacing: '0.5px',
+                      transition: 'all 0.3s ease',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      padding: '1rem 2rem',
+                      borderRadius: '1rem',
+                      background: 'rgba(255, 255, 255, 0.3)',
+                      backdropFilter: 'blur(10px)',
+                      border: '2px solid rgba(44, 82, 130, 0.2)',
+                      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
+                    }}
+                    onMouseOver={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.5)';
+                      e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
+                      e.currentTarget.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.15)';
+                      e.currentTarget.style.borderColor = 'rgba(72, 187, 120, 0.4)';
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)';
+                      e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                      e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.1)';
+                      e.currentTarget.style.borderColor = 'rgba(44, 82, 130, 0.2)';
+                    }}
+                  >
+                    <span style={{ fontSize: '1.2rem' }}>✉️</span>
+                    krustypeak@gmail.com
+                  </a>
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '2rem',
+                  flexWrap: 'wrap'
+                }}>
+                  <div style={{
+                    textAlign: 'center',
+                    color: '#2F855A'
+                  }}>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>⚡</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '600' }}>Quick Response</div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    color: '#2F855A'
+                  }}>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>🤝</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '600' }}>Partnership Ready</div>
+                  </div>
+                  <div style={{
+                    textAlign: 'center',
+                    color: '#2F855A'
+                  }}>
+                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>💡</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '600' }}>Open to Ideas</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </Container>
       </ContactSection>
     </PageContainer>

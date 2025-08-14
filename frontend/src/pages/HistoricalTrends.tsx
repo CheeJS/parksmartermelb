@@ -12,14 +12,11 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
+import { Line } from 'react-chartjs-2';
 import { 
   fetchCarOwnershipAnalysis, 
-  calculateInfrastructureProjections,
   formatDisplayValue,
-  validateAnalysisData,
-  type CarOwnershipAnalysisData,
-  type OwnershipRate 
+  type CarOwnershipAnalysisData
 } from '../services/historicalTrendsService';
 
 ChartJS.register(
@@ -59,33 +56,6 @@ const Description = styled.p`
   font-size: 1.1rem;
   line-height: 1.6;
   margin-bottom: 1rem;
-`;
-
-const MetricsContainer = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-`;
-
-const MetricCard = styled.div`
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 1.5rem;
-  border-radius: 1rem;
-  text-align: center;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-`;
-
-const MetricValue = styled.div`
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-`;
-
-const MetricLabel = styled.div`
-  font-size: 0.9rem;
-  opacity: 0.9;
 `;
 
 const ChartContainer = styled.div`
@@ -230,14 +200,6 @@ const ChartWrapper = styled.div`
   min-width: 0; /* Prevents flex items from overflowing */
 `;
 
-const RecommendationsContainer = styled.div`
-  background: #E6FFFA;
-  border-left: 4px solid #38B2AC;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-`;
-
 const DataTableContainer = styled.div`
   background: white;
   border-radius: 1rem;
@@ -269,13 +231,6 @@ const DataTable = styled.table`
   tr:hover {
     background-color: #F7FAFC;
   }
-`;
-
-const NoDataMessage = styled.div`
-  text-align: center;
-  padding: 2rem;
-  color: #718096;
-  font-style: italic;
 `;
 
 const DataSummary = styled.div`
@@ -422,44 +377,6 @@ const HistoricalTrends = () => {
       </PageContainer>
     );
   }
-
-  // Chart data for ownership rate trends
-  const ownershipChartData = {
-    labels: analysisData.ownershipRates.map(rate => rate.year.toString()),
-    datasets: [
-      {
-        label: 'Cars per 1,000 Residents',
-        data: analysisData.ownershipRates.map(rate => rate.rate),
-        borderColor: '#2C5282',
-        backgroundColor: 'rgba(44, 82, 130, 0.1)',
-        fill: true,
-        tension: 0.4,
-        pointRadius: 6,
-        pointHoverRadius: 8,
-      },
-    ],
-  };
-
-  // Chart data for absolute numbers
-  const absoluteChartData = {
-    labels: analysisData.ownershipRates.map(rate => rate.year.toString()),
-    datasets: [
-      {
-        label: 'Total Vehicle Registrations',
-        data: analysisData.ownershipRates.map(rate => rate.vehicles),
-        backgroundColor: '#48BB78',
-        borderColor: '#38A169',
-        borderWidth: 2,
-      },
-      {
-        label: 'Population',
-        data: analysisData.ownershipRates.map(rate => rate.population),
-        backgroundColor: '#ED8936',
-        borderColor: '#DD6B20',
-        borderWidth: 2,
-      },
-    ],
-  };
 
   return (
     <PageContainer>
