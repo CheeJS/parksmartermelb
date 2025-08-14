@@ -22,7 +22,7 @@ const NavBar = styled.nav`
 `;
 
 const NavContainer = styled.div`
-  max-width: 2200px;
+  max-width: 1700px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
