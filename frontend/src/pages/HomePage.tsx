@@ -1143,14 +1143,6 @@ const HomePage = () => {
                     <div style="width: 8px; height: 8px; background: red; border-radius: 50%; margin-right: 12px;"></div>
                     <span style="color: #4A5568;">Occupied Parking Space</span>
                   </div>
-                  <div style="display: flex; align-items: center; margin: 4px 0;">
-                    <div style="width: 12px; height: 12px; background: #48BB78; border-radius: 50%; margin-right: 12px; border: 1px solid white;"></div>
-                    <span style="color: #4A5568;">Your Current Location</span>
-                  </div>
-                  <div style="display: flex; align-items: center; margin: 4px 0;">
-                    <div style="width: 12px; height: 12px; background: #2C5282; border-radius: 50%; margin-right: 12px; border: 1px solid white;"></div>
-                    <span style="color: #4A5568;">Your Destination</span>
-                  </div>
                   <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E2E8F0; color: #718096; font-size: 11px;">
                     💡 Click individual dots to see last update time
                   </div>
