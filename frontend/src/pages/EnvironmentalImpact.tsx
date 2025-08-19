@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import styled from 'styled-components';
-import { useLoadScript, Autocomplete } from '@react-google-maps/api';
-import { calculateRoute } from '../services/routesService';
+import { SecureAutocomplete } from '../components/SecureAutocomplete';
+import { PlaceDetails } from '../services/secureGoogleMapsService';
 import { calculateCO2Emissions, getEmissionColor, getEmissionRating, formatEmissions } from '../utils/emissionCalculator';
 import { findParkingNearDestination, formatDistance, formatWalkTime, ParkingRecommendation } from '../services/publicTransportService';
 
@@ -561,8 +561,6 @@ const ParkingPrice = styled.div`
 const EnvironmentalImpact = () => {
   const [startLocation, setStartLocation] = useState<Location | null>(null);
   const [endLocation, setEndLocation] = useState<Location | null>(null);
-  const [startAutocomplete, setStartAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
-  const [endAutocomplete, setEndAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [isCalculated, setIsCalculated] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [distance, setDistance] = useState<string>('');
@@ -628,11 +626,6 @@ const EnvironmentalImpact = () => {
     }
   ];
 
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
-    libraries: ['places']
-  });
-
   // Fetch parking recommendations when destination changes
   useEffect(() => {
     const fetchParkingRecommendations = async () => {
@@ -662,44 +655,33 @@ const EnvironmentalImpact = () => {
     fetchParkingRecommendations();
   }, [endLocation]);
 
-  const onStartLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
-    setStartAutocomplete(autocomplete);
+  // Handle place selection from secure autocomplete
+  const handleStartPlaceSelected = useCallback((place: PlaceDetails) => {
+    console.log('📍 Start location selected:', place);
+    if (place.geometry?.location) {
+      const newLocation = {
+        lat: place.geometry.location.lat,
+        lng: place.geometry.location.lng,
+        address: place.formatted_address || place.name || ''
+      };
+      setStartLocation(newLocation);
+      setStartInputValue(newLocation.address);
+    }
   }, []);
 
-  const onEndLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
-    setEndAutocomplete(autocomplete);
+  const handleEndPlaceSelected = useCallback((place: PlaceDetails) => {
+    console.log('🎯 End location selected:', place);
+    if (place.geometry?.location) {
+      const newLocation = {
+        lat: place.geometry.location.lat,
+        lng: place.geometry.location.lng,
+        address: place.formatted_address || place.name || ''
+      };
+      setEndLocation(newLocation);
+      setEndInputValue(newLocation.address);
+      console.log('🎯 New destination selected:', newLocation.address, 'Coordinates:', newLocation.lat, newLocation.lng);
+    }
   }, []);
-
-  const onStartPlaceChanged = () => {
-    if (startAutocomplete) {
-      const place = startAutocomplete.getPlace();
-      if (place.geometry?.location) {
-        const newLocation = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-          address: place.formatted_address || place.name || ''
-        };
-        setStartLocation(newLocation);
-        setStartInputValue(newLocation.address);
-      }
-    }
-  };
-
-  const onEndPlaceChanged = () => {
-    if (endAutocomplete) {
-      const place = endAutocomplete.getPlace();
-      if (place.geometry?.location) {
-        const newLocation = {
-          lat: place.geometry.location.lat(),
-          lng: place.geometry.location.lng(),
-          address: place.formatted_address || place.name || ''
-        };
-        setEndLocation(newLocation);
-        setEndInputValue(newLocation.address);
-        console.log('🎯 New destination selected:', newLocation.address, 'Coordinates:', newLocation.lat, newLocation.lng);
-      }
-    }
-  };
 
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
@@ -708,38 +690,13 @@ const EnvironmentalImpact = () => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           
-          // Try to get a readable address using reverse geocoding
-          let address = 'Current Location';
-          
-          try {
-            if (window.google && window.google.maps) {
-              const geocoder = new window.google.maps.Geocoder();
-              const response = await new Promise<google.maps.GeocoderResponse>((resolve, reject) => {
-                geocoder.geocode(
-                  { location: { lat, lng } },
-                  (results, status) => {
-                    if (status === 'OK') {
-                      resolve({ results: results || [] } as google.maps.GeocoderResponse);
-                    } else {
-                      reject(new Error(`Geocoding failed: ${status}`));
-                    }
-                  }
-                );
-              });
-              
-              if (response.results && response.results.length > 0) {
-                address = response.results[0].formatted_address || 'Current Location';
-              }
-            }
-          } catch (error) {
-            console.warn('Could not get address for current location:', error);
-            // Fall back to showing coordinates
-            address = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
-          }
+          // Use simple coordinates-based address
+          const address = `Current Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
           
           const newLocation = { lat, lng, address };
           setStartLocation(newLocation);
           setStartInputValue(address);
+          console.log('📍 Current location set:', newLocation);
         },
         (error) => {
           console.error('Error getting current location:', error);
@@ -780,79 +737,49 @@ const EnvironmentalImpact = () => {
     setRouteError('');
     
     try {
-      // Calculate routes for specific travel modes (Motor uses Drive travel time)
-      const routePromises = travelModes
-        .filter(mode => mode.mode !== 'TWO_WHEELER') // Skip TWO_WHEELER, we'll use Drive time for Motor
-        .map(async (mode) => {
-          try {
-            console.log(`🔄 Starting calculation for ${mode.title} (${mode.mode})`);
-            const result = await calculateRoute(
-              startLocation,
-              endLocation,
-              mode.mode
-            );
-            console.log(`✅ Completed calculation for ${mode.title}:`, result);
-            return {
-              mode: mode.mode,
-              result: result
-            };
-          } catch (error) {
-            console.error(`❌ Error calculating route for ${mode.title} (${mode.mode}):`, error);
-            return {
-              mode: mode.mode,
-              result: { 
-                success: false, 
-                error: `Failed to calculate ${mode.title} route: ${error instanceof Error ? error.message : 'Unknown error'}`
-              }
-            };
-          }
-        });
-
-      const routeResults = await Promise.all(routePromises);
-      console.log('📊 All route results:', routeResults);
+      // Calculate straight-line distance (Haversine formula)
+      const R = 6371; // Earth's radius in kilometers
+      const dLat = (endLocation.lat - startLocation.lat) * Math.PI / 180;
+      const dLon = (endLocation.lng - startLocation.lng) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(startLocation.lat * Math.PI / 180) * Math.cos(endLocation.lat * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const straightLineDistance = R * c;
       
-      // Use driving route for distance (most reliable)
-      const driveResult = routeResults.find(r => r.mode === 'DRIVE')?.result;
+      // Estimate actual travel distance (straight line * 1.3 for city driving)
+      const estimatedDistance = (straightLineDistance * 1.3).toFixed(1);
       
-      if (driveResult?.success && driveResult.distance && driveResult.duration) {
-        setDistance(driveResult.distance.kilometers);
-        setDuration(driveResult.duration.text);
-        
-        // Set travel times for each mode
-        const newTravelTimes: Record<TravelMode, string> = {
-          'DRIVE': '',
-          'TRANSIT': '',
-          'TWO_WHEELER': '',
-          'BICYCLE': '',
-          'WALK': ''
-        };
-        
-        routeResults.forEach(({ mode, result }) => {
-          if (result.success && result.duration) {
-            newTravelTimes[mode] = result.duration.text;
-            console.log(`✅ Set travel time for ${mode}: ${result.duration.text}`);
-          } else {
-            newTravelTimes[mode] = 'N/A';
-            console.warn(`⚠️ No travel time for ${mode}:`, result.error);
-          }
-        });
-        
-        // Use Drive travel time for Motor (TWO_WHEELER)
-        if (driveResult.success && driveResult.duration) {
-          newTravelTimes['TWO_WHEELER'] = driveResult.duration.text;
-          console.log(`✅ Set Motor travel time (using Drive time): ${driveResult.duration.text}`);
-        }
-        
-        console.log('🕐 Final travel times:', newTravelTimes);
-        setTravelTimes(newTravelTimes);
-        setIsCalculated(true);
-      } else {
-        console.error('❌ Drive result failed:', driveResult);
-        setRouteError(driveResult?.error || 'Failed to calculate route');
-      }
+      // Estimate travel times based on distance and typical speeds
+      const estimatedTimes = {
+        'DRIVE': Math.round(straightLineDistance * 1.3 / 40 * 60), // 40 km/h in city
+        'TRANSIT': Math.round(straightLineDistance * 1.5 / 25 * 60), // 25 km/h average with stops
+        'TWO_WHEELER': Math.round(straightLineDistance * 1.3 / 35 * 60), // 35 km/h for motorcycles
+        'BICYCLE': Math.round(straightLineDistance * 1.4 / 15 * 60), // 15 km/h for cycling
+        'WALK': Math.round(straightLineDistance * 1.4 / 5 * 60) // 5 km/h walking
+      };
+      
+      const newTravelTimes: Record<TravelMode, string> = {
+        'DRIVE': `${estimatedTimes.DRIVE} mins`,
+        'TRANSIT': `${estimatedTimes.TRANSIT} mins`,
+        'TWO_WHEELER': `${estimatedTimes.DRIVE} mins`, // Same as car
+        'BICYCLE': `${estimatedTimes.BICYCLE} mins`,
+        'WALK': estimatedTimes.WALK > 60 ? 
+          `${Math.floor(estimatedTimes.WALK / 60)}h ${estimatedTimes.WALK % 60}m` : 
+          `${estimatedTimes.WALK} mins`
+      };
+      
+      console.log('📏 Estimated distance:', estimatedDistance, 'km');
+      
+      setDistance(estimatedDistance);
+      setDuration(newTravelTimes.DRIVE);
+      setTravelTimes(newTravelTimes);
+      setIsCalculated(true);
+      
     } catch (error) {
-      console.error('Error calculating routes:', error);
-      setRouteError('Network error occurred while calculating routes');
+      console.error('Error calculating distance:', error);
+      setRouteError('Error calculating route distance');
     } finally {
       setIsCalculating(false);
     }
@@ -881,9 +808,6 @@ const EnvironmentalImpact = () => {
 
 
 
-
-  if (loadError) return <div>Error loading maps</div>;
-  if (!isLoaded) return <div>Loading maps...</div>;
 
   return (
     <PageContainer>
@@ -938,33 +862,23 @@ const EnvironmentalImpact = () => {
         </SectionHeader>
         <FlexRow>
           <InputWrapper>
-            <Autocomplete
-              onLoad={onStartLoad}
-              onPlaceChanged={onStartPlaceChanged}
-            >
-              <SearchInput
-                type="text"
-                placeholder="Enter starting point"
-                value={startInputValue}
-                onChange={(e) => setStartInputValue(e.target.value)}
-              />
-            </Autocomplete>
+            <SecureAutocomplete
+              value={startInputValue}
+              onChange={setStartInputValue}
+              onPlaceSelected={handleStartPlaceSelected}
+              placeholder="Enter starting point"
+            />
           </InputWrapper>
           <Button onClick={getCurrentLocation}>
             Use Current Location
           </Button>
         </FlexRow>
-        <Autocomplete
-          onLoad={onEndLoad}
-          onPlaceChanged={onEndPlaceChanged}
-        >
-          <SearchInput
-            type="text"
-            placeholder="Enter destination"
-            value={endInputValue}
-            onChange={(e) => setEndInputValue(e.target.value)}
-          />
-        </Autocomplete>
+        <SecureAutocomplete
+          value={endInputValue}
+          onChange={setEndInputValue}
+          onPlaceSelected={handleEndPlaceSelected}
+          placeholder="Enter destination"
+        />
         
         <CalculateButton 
           onClick={calculateEmissions}

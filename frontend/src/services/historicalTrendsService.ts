@@ -1,3 +1,5 @@
+import { buildApiUrl } from '../config/api';
+
 export interface PopulationData {
   year: number;
   population: number;
@@ -40,8 +42,7 @@ export interface ApiResponse<T> {
  */
 export async function fetchPopulationData(): Promise<PopulationData[]> {
   try {
-    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
-    const response = await fetch(`${apiUrl}/api/population`);
+    const response = await fetch(buildApiUrl('/api/population'));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -66,8 +67,7 @@ export async function fetchPopulationData(): Promise<PopulationData[]> {
  */
 export async function fetchVehicleData(): Promise<VehicleData[]> {
   try {
-    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
-    const response = await fetch(`${apiUrl}/api/vehicle-census`);
+    const response = await fetch(buildApiUrl('/api/vehicle-census'));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -92,17 +92,15 @@ export async function fetchVehicleData(): Promise<VehicleData[]> {
  */
 export async function fetchCarOwnershipAnalysis(): Promise<CarOwnershipAnalysisData> {
   try {
-    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
-    
     // Try the simple test endpoint first to verify connectivity
     console.log('🔄 Attempting to fetch car ownership analysis...');
     
-    let response = await fetch(`${apiUrl}/api/car-ownership-analysis`);
+    let response = await fetch(buildApiUrl('/api/car-ownership-analysis'));
     
     // If the main endpoint fails, try the simple test endpoint
     if (!response.ok) {
       console.warn('⚠️ Main endpoint failed, trying simple test endpoint...');
-      response = await fetch(`${apiUrl}/api/simple-test`);
+      response = await fetch(buildApiUrl('/api/simple-test'));
     }
 
     if (!response.ok) {

@@ -1,10 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise');
+const { Client } = require('@googlemaps/google-maps-services-js');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Initialize Google Maps client
+const googleMapsClient = new Client({});
 
 // Database configuration
 const dbConfig = {
@@ -1100,6 +1104,171 @@ app.get('/api/off-street', async (req, res) => {
     res.status(500).json({
       status: 'error',
       message: 'Failed to fetch off-street parking data',
+      error: error.message
+    });
+  }
+});
+
+// Google Maps API endpoints - keeping API key secure on server side
+
+// Place search endpoint for autocomplete functionality
+app.post('/api/places/search', async (req, res) => {
+  try {
+    console.log('🔍 Place search request received:', req.body);
+    const { input, types, location, radius = 50000 } = req.body;
+    
+    if (!input) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Search input is required'
+      });
+    }
+
+    // Build params object, only include location if provided
+    const params = {
+      input: input,
+      radius: radius,
+      components: ['country:au'], // Restrict to Australia
+      key: process.env.GOOGLE_MAPS_API_KEY
+    };
+
+    // Only add types if specifically provided and valid
+    if (types && types.length > 0) {
+      params.types = types;
+    }
+
+    // Only add location if it's provided and valid
+    if (location && location.lat && location.lng) {
+      params.location = location;
+    }
+
+    console.log('📡 Calling Google Maps API with params:', { ...params, key: '[HIDDEN]' });
+
+    // Add timeout wrapper
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Google Maps API timeout after 10 seconds')), 10000);
+    });
+
+    const response = await Promise.race([
+      googleMapsClient.placeAutocomplete({ params: params }),
+      timeoutPromise
+    ]);
+
+    console.log('✅ Google Maps API response received:', response.data.status);
+
+    const predictions = response.data.predictions.map(prediction => ({
+      place_id: prediction.place_id,
+      description: prediction.description,
+      main_text: prediction.structured_formatting?.main_text,
+      secondary_text: prediction.structured_formatting?.secondary_text,
+      types: prediction.types
+    }));
+
+    res.json({
+      status: 'success',
+      data: predictions
+    });
+
+  } catch (error) {
+    console.error('❌ Error in place search:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to search places',
+      error: error.message
+    });
+  }
+});
+
+// Place details endpoint to get coordinates from place_id
+app.post('/api/places/details', async (req, res) => {
+  try {
+    const { place_id, fields = ['geometry', 'name', 'formatted_address'] } = req.body;
+    
+    if (!place_id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Place ID is required'
+      });
+    }
+
+    const response = await googleMapsClient.placeDetails({
+      params: {
+        place_id: place_id,
+        fields: fields,
+        key: process.env.GOOGLE_MAPS_API_KEY
+      }
+    });
+
+    const place = response.data.result;
+    const placeData = {
+      place_id: place_id,
+      name: place.name,
+      formatted_address: place.formatted_address,
+      geometry: {
+        location: {
+          lat: place.geometry?.location?.lat,
+          lng: place.geometry?.location?.lng
+        }
+      }
+    };
+
+    res.json({
+      status: 'success',
+      data: placeData
+    });
+
+  } catch (error) {
+    console.error('❌ Error getting place details:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to get place details',
+      error: error.message
+    });
+  }
+});
+
+// Geocoding endpoint for address to coordinates conversion
+app.post('/api/geocoding', async (req, res) => {
+  try {
+    const { address, components } = req.body;
+    
+    if (!address) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Address is required'
+      });
+    }
+
+    const response = await googleMapsClient.geocode({
+      params: {
+        address: address,
+        components: components || { country: 'AU' },
+        key: process.env.GOOGLE_MAPS_API_KEY
+      }
+    });
+
+    const results = response.data.results.map(result => ({
+      formatted_address: result.formatted_address,
+      geometry: {
+        location: {
+          lat: result.geometry.location.lat,
+          lng: result.geometry.location.lng
+        }
+      },
+      place_id: result.place_id,
+      types: result.types
+    }));
+
+    res.json({
+      status: 'success',
+      data: results
+    });
+
+  } catch (error) {
+    console.error('❌ Error in geocoding:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to geocode address',
       error: error.message
     });
   }

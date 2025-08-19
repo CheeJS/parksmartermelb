@@ -3,6 +3,8 @@
  * Handles fetching public transport stops and parking recommendations from database
  */
 
+import { buildApiUrl, API_ENDPOINTS } from '../config/api';
+
 export interface PublicTransportStop {
   id: number;
   stop_id: string;
@@ -70,8 +72,7 @@ export async function fetchNearbyTransportStops(
   try {
     // Use the backend API endpoint
 
-    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
-    const response = await fetch(`${apiUrl}/api/transport-stops`, {
+    const response = await fetch(buildApiUrl(API_ENDPOINTS.transportStops), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -117,8 +118,7 @@ export async function findParkingNearDestination(
 ): Promise<ParkingRecommendation[]> {
   try {
     // Use the backend API endpoint for real parking data
-    const apiUrl = process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me';
-    const response = await fetch(`${apiUrl}/api/parking-recommendations`, {
+    const response = await fetch(buildApiUrl(API_ENDPOINTS.parkingRecommendations), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
