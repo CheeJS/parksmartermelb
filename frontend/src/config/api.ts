@@ -1,13 +1,16 @@
 // API Configuration
 // In development: Uses proxy to backend (localhost:5000)
-// In production: Uses relative URLs (same domain as frontend)
+// In production: Uses full URL to DigitalOcean backend
 
 const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
-// For development, we use relative URLs thanks to the proxy in package.json
-// For production, we also use relative URLs assuming frontend and backend are on same domain
-export const API_BASE_URL = '';
+// API Base URL configuration
+// Development: Empty string (uses proxy from package.json)
+// Production: Uses environment variable or default backend URL
+export const API_BASE_URL = IS_DEVELOPMENT 
+  ? '' 
+  : (process.env.REACT_APP_API_URL);
 
 // Export individual endpoint builders for better maintainability
 export const API_ENDPOINTS = {
@@ -41,15 +44,25 @@ export const API_ENDPOINTS = {
 
 // Helper function to build full API URLs
 export const buildApiUrl = (endpoint: string): string => {
-  return `${API_BASE_URL}${endpoint}`;
+  const fullUrl = `${API_BASE_URL}${endpoint}`;
+  // Only log in development
+  if (IS_DEVELOPMENT) {
+    console.log(`🔗 Building API URL: ${endpoint} -> ${fullUrl}`);
+  }
+  return fullUrl;
 };
 
-// Environment info for debugging
+// Environment info for debugging (only in development)
 export const API_CONFIG = {
   isDevelopment: IS_DEVELOPMENT,
   isProduction: IS_PRODUCTION,
   baseUrl: API_BASE_URL,
-  environment: process.env.NODE_ENV || 'development'
+  environment: process.env.NODE_ENV || 'development',
+  reactAppApiUrl: process.env.REACT_APP_API_URL
 };
 
-console.log('🔧 API Configuration:', API_CONFIG);
+// Only log configuration in development
+if (IS_DEVELOPMENT) {
+  console.log('🔧 API Configuration:', API_CONFIG);
+  console.log('🌐 Final API Base URL:', API_BASE_URL);
+}
