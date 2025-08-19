@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
+import { useLoadScript, Autocomplete } from '@react-google-maps/api';
 import { Chart } from 'chart.js';
 import '../styles/Map.css';
 import { buildApiUrl, API_ENDPOINTS } from '../config/api';
-import { SecureAutocomplete } from '../components/SecureAutocomplete';
-import { PlaceDetails } from '../services/secureGoogleMapsService';
 
 const StatsGrid = styled.div`
   display: grid;
@@ -559,6 +558,7 @@ const HomePage = () => {
   
   // Parking search state
   const [destinationLocation, setDestinationLocation] = useState<{lat: number, lng: number, address: string} | null>(null);
+  const [destinationAutocomplete, setDestinationAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   const [parkingResults, setParkingResults] = useState<SimpleParkingSpot[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -573,25 +573,15 @@ const HomePage = () => {
   // Add state for highlighted parking spot
   const [highlightedParkingName, setHighlightedParkingName] = useState<string | null>(null);
 
-  // Handle place selection from secure autocomplete
-  const handlePlaceSelected = useCallback((place: PlaceDetails) => {
-    console.log('📍 Destination selected:', place);
-    if (place.geometry?.location) {
-      const newLocation = {
-        lat: place.geometry.location.lat,
-        lng: place.geometry.location.lng,
-        address: place.formatted_address || place.name || ''
-      };
-      console.log('✅ Destination set:', newLocation);
-      setDestinationLocation(newLocation);
-      setDestinationInputValue(newLocation.address);
-    } else {
-      console.log('❌ No geometry/location found in place');
-    }
-  }, []);
+  // Google Maps setup
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '',
+    libraries: ['places']
+  });
 
   // Function to load map data (declared early to avoid hoisting issues)
   const loadMapData = useCallback(async () => {
+    console.log('🔄 Loading map data...');
     setIsMapLoading(true);
     
     const mapContainer = document.getElementById('map');
@@ -902,6 +892,34 @@ const HomePage = () => {
       setIsSearching(false);
     }
   }, []); // Empty dependency array since it doesn't depend on any state
+
+  // Autocomplete callbacks
+  const onDestinationLoad = useCallback((autocomplete: google.maps.places.Autocomplete) => {
+    setDestinationAutocomplete(autocomplete);
+  }, []);
+
+  const onDestinationPlaceChanged = () => {
+    if (destinationAutocomplete) {
+      const place = destinationAutocomplete.getPlace();
+      console.log('📍 Destination selected:', place);
+      if (place.geometry?.location) {
+        const newLocation = {
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          address: place.formatted_address || place.name || ''
+        };
+        console.log('✅ Destination set:', newLocation);
+        setDestinationLocation(newLocation);
+        setDestinationInputValue(newLocation.address);
+        
+        // Don't automatically search - wait for user to click Find Parking button
+      } else {
+        console.log('❌ No geometry/location found in place');
+      }
+    } else {
+      console.log('❌ No destination autocomplete available');
+    }
+  };
 
   // Handle manual parking search (button click)
   const handleParkingSearch = async () => {
@@ -1332,15 +1350,29 @@ const HomePage = () => {
             </SearchSubtitle>
             
             <SearchForm>
-              <SecureAutocomplete
-                placeholder="Enter destination address..."
-                onPlaceSelected={handlePlaceSelected}
-                value={destinationInputValue}
-                onChange={setDestinationInputValue}
-              />
+              {isLoaded ? (
+                <Autocomplete
+                  onLoad={onDestinationLoad}
+                  onPlaceChanged={onDestinationPlaceChanged}
+                >
+                  <SearchInput
+                    type="text"
+                    placeholder="Enter destination address..."
+                    value={destinationInputValue}
+                    onChange={(e) => setDestinationInputValue(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleParkingSearch()}
+                  />
+                </Autocomplete>
+              ) : (
+                <SearchInput
+                  type="text"
+                  placeholder="Loading Google Places..."
+                  disabled
+                />
+              )}
               <SearchButton 
                 onClick={handleParkingSearch}
-                disabled={isSearching || !destinationLocation}
+                disabled={isSearching || !destinationLocation || !isLoaded}
               >
                 {isSearching ? 'Searching...' : 'Find Parking'}
               </SearchButton>

@@ -1,4 +1,4 @@
-import { buildApiUrl } from '../config/api';
+import { buildApiUrl, API_ENDPOINTS } from '../config/api';
 
 export interface PopulationData {
   year: number;
@@ -42,7 +42,7 @@ export interface ApiResponse<T> {
  */
 export async function fetchPopulationData(): Promise<PopulationData[]> {
   try {
-    const response = await fetch(buildApiUrl('/api/population'));
+    const response = await fetch(buildApiUrl(API_ENDPOINTS.population));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -67,7 +67,7 @@ export async function fetchPopulationData(): Promise<PopulationData[]> {
  */
 export async function fetchVehicleData(): Promise<VehicleData[]> {
   try {
-    const response = await fetch(buildApiUrl('/api/vehicle-census'));
+    const response = await fetch(buildApiUrl(API_ENDPOINTS.vehicleCensus));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -95,12 +95,12 @@ export async function fetchCarOwnershipAnalysis(): Promise<CarOwnershipAnalysisD
     // Try the simple test endpoint first to verify connectivity
     console.log('🔄 Attempting to fetch car ownership analysis...');
     
-    let response = await fetch(buildApiUrl('/api/car-ownership-analysis'));
+    let response = await fetch(buildApiUrl(API_ENDPOINTS.carOwnershipAnalysis));
     
     // If the main endpoint fails, try the simple test endpoint
     if (!response.ok) {
       console.warn('⚠️ Main endpoint failed, trying simple test endpoint...');
-      response = await fetch(buildApiUrl('/api/simple-test'));
+      response = await fetch(buildApiUrl(API_ENDPOINTS.simpleTest));
     }
 
     if (!response.ok) {
