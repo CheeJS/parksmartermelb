@@ -10,7 +10,7 @@ const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 // Production: Uses environment variable or default backend URL
 export const API_BASE_URL = IS_DEVELOPMENT 
   ? '' 
-  : (process.env.REACT_APP_API_URL);
+  : (process.env.REACT_APP_API_URL || 'https://api.parksmartermelb.me');
 
 // Export individual endpoint builders for better maintainability
 export const API_ENDPOINTS = {
@@ -45,10 +45,8 @@ export const API_ENDPOINTS = {
 // Helper function to build full API URLs
 export const buildApiUrl = (endpoint: string): string => {
   const fullUrl = `${API_BASE_URL}${endpoint}`;
-  // Only log in development
-  if (IS_DEVELOPMENT) {
-    console.log(`🔗 Building API URL: ${endpoint} -> ${fullUrl}`);
-  }
+  // Always log for debugging this issue
+  console.log(`🔗 Building API URL: ${endpoint} -> ${fullUrl} (Base: "${API_BASE_URL}")`);
   return fullUrl;
 };
 
@@ -61,8 +59,6 @@ export const API_CONFIG = {
   reactAppApiUrl: process.env.REACT_APP_API_URL
 };
 
-// Only log configuration in development
-if (IS_DEVELOPMENT) {
-  console.log('🔧 API Configuration:', API_CONFIG);
-  console.log('🌐 Final API Base URL:', API_BASE_URL);
-}
+// Always log configuration for debugging
+console.log('🔧 API Configuration:', API_CONFIG);
+console.log('🌐 Final API Base URL:', API_BASE_URL);
