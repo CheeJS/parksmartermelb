@@ -1,11 +1,9 @@
 /**
- * Secure Google Maps Service
+ * Secure Google Maps Service  
  * Handles place searches and geocoding through backend API to keep API key secure
  */
 
-import { buildApiUrl, API_ENDPOINTS } from '../config/api';
-
-export interface PlacePrediction {
+import { buildApiUrl, API_ENDPOINTS } from '../config/api';export interface PlacePrediction {
   place_id: string;
   description: string;
   main_text?: string;
