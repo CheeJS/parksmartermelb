@@ -94,6 +94,7 @@ export const SecureAutocomplete: React.FC<SecureAutocompleteProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -131,15 +132,19 @@ export const SecureAutocomplete: React.FC<SecureAutocompleteProps> = ({
     if (newValue.length >= 3) {
       setIsLoading(true);
       setShowSuggestions(true);
+      setErrorMessage(null);
       
       // Debounce search
       searchTimeoutRef.current = setTimeout(async () => {
         try {
-          const results = await searchPlaces(newValue);
-          setPredictions(results);
+      console.debug('🔍 Autocomplete querying backend for:', newValue);
+      const results = await searchPlaces(newValue);
+      console.debug('✅ Autocomplete predictions:', results);
+      setPredictions(results);
         } catch (error) {
           console.error('Search error:', error);
           setPredictions([]);
+      setErrorMessage((error as any)?.message || 'Search failed');
         } finally {
           setIsLoading(false);
         }
@@ -148,6 +153,7 @@ export const SecureAutocomplete: React.FC<SecureAutocompleteProps> = ({
       setPredictions([]);
       setShowSuggestions(false);
       setIsLoading(false);
+    setErrorMessage(null);
     }
   };
 
@@ -217,6 +223,8 @@ export const SecureAutocomplete: React.FC<SecureAutocompleteProps> = ({
         <SuggestionsList>
           {isLoading ? (
             <LoadingMessage>Searching...</LoadingMessage>
+          ) : errorMessage ? (
+            <LoadingMessage style={{ color: '#E53E3E' }}>⚠️ {errorMessage}</LoadingMessage>
           ) : predictions.length > 0 ? (
             predictions.map((prediction, index) => (
               <SuggestionItem

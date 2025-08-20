@@ -1124,11 +1124,12 @@ app.post('/api/places/search', async (req, res) => {
       });
     }
 
-    // Build params object, only include location if provided
+    // Build params object, only include optional values when valid
+    // NOTE: components must be a string like 'country:au' (not an array) or the Places API will ignore it
     const params = {
       input: input,
       radius: radius,
-      components: ['country:au'], // Restrict to Australia
+      components: 'country:au', // Restrict to Australia
       key: process.env.GOOGLE_MAPS_API_KEY
     };
 
@@ -1142,7 +1143,11 @@ app.post('/api/places/search', async (req, res) => {
       params.location = location;
     }
 
-    console.log('📡 Calling Google Maps API with params:', { ...params, key: '[HIDDEN]' });
+    if (!process.env.GOOGLE_MAPS_API_KEY) {
+      console.error('❌ Missing GOOGLE_MAPS_API_KEY environment variable. Autocomplete will fail.');
+    }
+
+    console.log('📡 Calling Google Maps API with params:', { ...params, key: process.env.GOOGLE_MAPS_API_KEY ? '[HIDDEN]' : '[MISSING]' });
 
     // Add timeout wrapper
     const timeoutPromise = new Promise((_, reject) => {
@@ -1150,13 +1155,30 @@ app.post('/api/places/search', async (req, res) => {
     });
 
     const response = await Promise.race([
-      googleMapsClient.placeAutocomplete({ params: params }),
+      googleMapsClient.placeAutocomplete({ params }),
       timeoutPromise
     ]);
 
-    console.log('✅ Google Maps API response received:', response.data.status);
+    if (!response || !response.data) {
+      console.error('❌ No response data from Google Places Autocomplete');
+      return res.status(502).json({
+        status: 'error',
+        message: 'No response from Google Places service'
+      });
+    }
 
-    const predictions = response.data.predictions.map(prediction => ({
+    console.log('✅ Google Maps API response received:', response.data.status, `(${(response.data.predictions || []).length} predictions)`);
+
+    if (response.data.status !== 'OK') {
+      // Common statuses: ZERO_RESULTS, OVER_QUERY_LIMIT, REQUEST_DENIED, INVALID_REQUEST
+      console.error('❌ Google Places Autocomplete returned non-OK status:', response.data.status, response.data.error_message);
+      return res.status(502).json({
+        status: 'error',
+        message: `Places API error: ${response.data.status}${response.data.error_message ? ' - ' + response.data.error_message : ''}`
+      });
+    }
+
+    const predictions = (response.data.predictions || []).map(prediction => ({
       place_id: prediction.place_id,
       description: prediction.description,
       main_text: prediction.structured_formatting?.main_text,
@@ -1164,7 +1186,7 @@ app.post('/api/places/search', async (req, res) => {
       types: prediction.types
     }));
 
-    res.json({
+    return res.json({
       status: 'success',
       data: predictions
     });
